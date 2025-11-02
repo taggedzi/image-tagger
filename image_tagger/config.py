@@ -89,7 +89,7 @@ class AppConfig(BaseModel):
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize the configuration to primitive Python types."""
-        payload = self.model_dump()
+        payload = self.model_dump(mode="json")
         if self.output_directory is not None:
             payload["output_directory"] = str(self.output_directory)
         return payload

@@ -8,7 +8,7 @@ Image Tagger is a cross-platform Python library and desktop application that cap
 - Batch processing with threaded execution and live progress feedback
 - Two output modes: embed metadata inside supported formats or emit YAML sidecars
 - Validated settings dialog with persistent storage in the user's configuration directory
-- Extensible model registry with a lightweight built-in heuristic model as a fallback
+- Extensible model registry with a lightweight fallback plus optional OpenCLIP and multiple BLIP captioning checkpoints
 - Clean separation between the core analysis pipeline, metadata IO, and the GUI
 
 ## Getting started
@@ -27,7 +27,7 @@ pip install -U pip
 pip install -e .
 ```
 
-> **Note:** Optional extras such as CLIP, Transformers, or ONNX models can be installed with `pip install -e .[clip]` or similar.
+> **Note:** Optional extras can be installed with e.g. `pip install -e .[clip]` for OpenCLIP tagging, `pip install -e .[blip]` for BLIP captioning, or `pip install -e .[full]` for everything. The first time you run a BLIP or CLIP model, Hugging Face will download the weights (up to ~1 GB); this happens in the background once you start processing images.
 
 ### Launch the GUI
 
@@ -63,7 +63,7 @@ image_tagger/
 ├── config.py          # Pydantic-based application settings
 ├── settings_store.py  # Cross-platform config persistence helper
 ├── utils/             # Path discovery utilities
-├── models/            # Model interfaces, registry, and built-in heuristic model
+├── models/            # Model interfaces, registry, heuristic/CLIP/BLIP implementations
 ├── services/          # High-level pipeline coordinating models and IO
 ├── io/                # Metadata writers (EXIF/PNG) and YAML sidecars
 └── gui/               # PySide6 application with drag-and-drop and settings dialog
@@ -81,8 +81,7 @@ The GUI automatically discovers new models via the registry.
 
 ## Next steps
 
-- Add real ML-backed models (e.g. CLIP, BLIP, Stable Diffusion captioners)
+- Add additional ML models (e.g. Stable Diffusion captioners, ONNX pipelines)
 - Improve metadata embedding coverage for additional formats (WebP, TIFF, etc.)
 - Provide thumbnail previews inside the GUI result list
 - Bundle automated tests around the heuristic model and pipeline
-

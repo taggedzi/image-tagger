@@ -6,14 +6,15 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
+from threading import Lock
+from typing import Callable, Sequence
 
 from PIL import Image
 
 from ..config import AppConfig, OutputMode
 from ..io.metadata import MetadataWriter, UnsupportedFormatError
 from ..io.yaml_sidecar import YamlSidecarWriter
-from ..models.base import AnalysisRequest, ModelOutput
+from ..models.base import AnalysisRequest, ModelOutput, TaggingModel
 from ..models.registry import ModelRegistry
 from ..utils.paths import resolve_image_paths
 
@@ -40,7 +41,8 @@ class ImageAnalyzer:
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
-        self.model = ModelRegistry.get(config.model_name)
+        self._model: TaggingModel | None = None
+        self._model_lock = Lock()
         self.metadata_writer = MetadataWriter()
         self.sidecar_writer = YamlSidecarWriter(extension=config.sidecar_extension)
 
@@ -107,10 +109,13 @@ class ImageAnalyzer:
         logger.debug("Analyzing %s", image_path)
         request = self._build_request()
 
+        model = self._get_model()
+
         with Image.open(image_path) as img:
-            output = self.model.analyze(img, request)
+            output = model.analyze(img, request)
 
         prepared = self._prepare_output(output)
+        model_identifier = model.info().identifier
 
         embedded = False
         sidecar_path: Path | None = None
@@ -118,9 +123,9 @@ class ImageAnalyzer:
         if self.config.output_mode == OutputMode.EMBED:
             embedded = self._try_embed(image_path, prepared)
             if not embedded:
-                sidecar_path = self._write_sidecar(image_path, prepared)
+                sidecar_path = self._write_sidecar(image_path, prepared, model_identifier)
         else:
-            sidecar_path = self._write_sidecar(image_path, prepared)
+            sidecar_path = self._write_sidecar(image_path, prepared, model_identifier)
             if self.config.embed_metadata:
                 embedded = self._try_embed(image_path, prepared)
 
@@ -130,7 +135,7 @@ class ImageAnalyzer:
             tags=list(prepared["tags"]),
             embedded=embedded,
             sidecar_path=sidecar_path,
-            extras=prepared.get("extras", {}),
+            extras={**prepared.get("extras", {}), "model": model_identifier},
         )
 
     def _prepare_output(self, output: ModelOutput) -> dict[str, object]:
@@ -162,10 +167,12 @@ class ImageAnalyzer:
             logger.exception("Failed to embed metadata into %s", image_path)
             return False
 
-    def _write_sidecar(self, image_path: Path, payload: dict[str, object]) -> Path:
+    def _write_sidecar(
+        self, image_path: Path, payload: dict[str, object], model_id: str
+    ) -> Path:
         metadata = {
             "image": str(image_path),
-            "model": self.model.info().identifier,
+            "model": model_id,
             "caption": payload.get("caption"),
             "tags": payload.get("tag_details"),
             "extras": payload.get("extras"),
@@ -175,3 +182,14 @@ class ImageAnalyzer:
             metadata,
             output_directory=self.config.output_directory,
         )
+
+    def _get_model(self) -> TaggingModel:
+        with self._model_lock:
+            if (
+                self._model is None
+                or self._model.info().identifier != self.config.model_name
+            ):
+                logger.info("Loading model '%s'...", self.config.model_name)
+                self._model = ModelRegistry.get(self.config.model_name)
+                logger.info("Model '%s' ready.", self.config.model_name)
+        return self._model

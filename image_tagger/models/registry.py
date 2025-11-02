@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from importlib import import_module
-from typing import Callable, Dict, Iterable, Optional
+from typing import Callable, Dict
 
 from .base import ModelInfo, TaggingModel
 
 
 Factory = Callable[[], TaggingModel]
+logger = logging.getLogger(__name__)
 
 
 class ModelRegistry:
@@ -30,7 +32,16 @@ class ModelRegistry:
     def ensure_bootstrapped(cls) -> None:
         if cls._bootstrap_complete:
             return
-        import_module("image_tagger.models.builtin.simple")
+        modules = [
+            "image_tagger.models.builtin.simple",
+            "image_tagger.models.openclip",
+            "image_tagger.models.blip",
+        ]
+        for module_name in modules:
+            try:
+                import_module(module_name)
+            except ImportError as exc:  # pragma: no cover - optional dependency paths
+                logger.debug("Optional model module %s could not be imported: %s", module_name, exc)
         cls._bootstrap_complete = True
 
     @classmethod
@@ -53,4 +64,3 @@ class ModelRegistry:
         instance = factory()
         instance.load()
         return instance
-
