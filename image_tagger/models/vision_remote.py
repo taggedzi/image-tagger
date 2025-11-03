@@ -251,20 +251,21 @@ class BaseRemoteVisionModel(TaggingModel):
             headers["Authorization"] = f"Bearer {self._config.remote_api_key}"
         return headers
 
-    def _session_post(self, url: str, payload: dict[str, Any]) -> Response:
+    def _session_post(self, url: str, payload: dict[str, Any], *, timeout: float | None = None) -> Response:
         if self._session is None:
             raise ModelError("HTTP session not initialised.")
         try:
+            effective_timeout = timeout or self._config.remote_timeout
             response = self._session.post(
                 url,
                 json=payload,
                 headers=self._headers(),
-                timeout=self._config.remote_timeout,
+                timeout=effective_timeout,
             )
         except Exception as exc:  # pragma: no cover - network failures are surfaced to users
             if requests is not None and isinstance(exc, requests.exceptions.Timeout):
                 raise ModelError(
-                    f"{self._backend} request timed out after {self._config.remote_timeout}s. "
+                    f"{self._backend} request timed out after {effective_timeout}s. "
                     "Increase the remote timeout or ensure the model is loaded."
                 ) from exc
             raise ModelError(f"Failed to contact {self._backend} backend: {exc}") from exc
@@ -274,19 +275,20 @@ class BaseRemoteVisionModel(TaggingModel):
             )
         return response
 
-    def _session_get(self, url: str) -> Response:
+    def _session_get(self, url: str, *, timeout: float | None = None) -> Response:
         if self._session is None:
             raise ModelError("HTTP session not initialised.")
         try:
+            effective_timeout = timeout or self._config.remote_timeout
             response = self._session.get(
                 url,
                 headers=self._headers(),
-                timeout=self._config.remote_timeout,
+                timeout=effective_timeout,
             )
         except Exception as exc:  # pragma: no cover - network failures are surfaced to users
             if requests is not None and isinstance(exc, requests.exceptions.Timeout):
                 raise ModelError(
-                    f"{self._backend} request timed out after {self._config.remote_timeout}s. "
+                    f"{self._backend} request timed out after {effective_timeout}s. "
                     "Increase the remote timeout or ensure the model is loaded."
                 ) from exc
             raise ModelError(f"Failed to contact {self._backend} backend: {exc}") from exc
@@ -369,7 +371,19 @@ class OllamaVisionModel(BaseRemoteVisionModel):
                 "num_predict": self._config.remote_max_tokens,
             },
         }
-        response = self._session_post(endpoint, payload)
+        try:
+            response = self._session_post(endpoint, payload)
+        except ModelError as exc:
+            message = str(exc).lower()
+            if "timed out" not in message:
+                raise
+            extended_timeout = self._config.remote_timeout + 60.0
+            logger.info(
+                "Ollama request exceeded %.1fs; retrying once with %.1fs to allow the model to load.",
+                self._config.remote_timeout,
+                extended_timeout,
+            )
+            response = self._session_post(endpoint, payload, timeout=extended_timeout)
         data = response.json()
         if "error" in data:
             raise ModelError(f"Ollama backend error: {data['error']}")

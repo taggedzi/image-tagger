@@ -109,7 +109,7 @@ class AppConfig(BaseModel):
         description="Maximum number of tokens requested from remote vision backends.",
     )
     remote_timeout: float = Field(
-        default=60.0,
+        default=90.0,
         ge=1.0,
         le=600.0,
         description="Timeout (seconds) for HTTP calls to remote vision services.",
