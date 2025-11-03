@@ -163,6 +163,10 @@ class MainWindow(QMainWindow):
         self._collected_paths = paths
         self.progress_panel.set_busy(True)
         self.progress_panel.update_progress(0, len(paths), "")
+        if self.config.model_name.startswith("remote."):
+            self.progress_panel.show_hint(
+                "Contacting remote model… the first run may take a minute while the model loads."
+            )
         self._toggle_controls(False)
 
         worker = ProcessingWorker(self.analyzer, paths)

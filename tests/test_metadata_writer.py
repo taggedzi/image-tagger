@@ -6,6 +6,29 @@ piexif = pytest.importorskip("piexif")
 from image_tagger.io.metadata import MetadataWriter
 
 
+def _as_bytes(raw):
+    if isinstance(raw, bytes):
+        return raw
+    if isinstance(raw, bytearray):
+        return bytes(raw)
+    if isinstance(raw, memoryview):
+        return raw.tobytes()
+    if isinstance(raw, (tuple, list)):
+        return bytes(int(item) & 0xFF for item in raw)
+    return b""
+
+
+def _decode_caption(raw) -> str:
+    return _as_bytes(raw).decode("utf-8", errors="ignore") if raw else ""
+
+
+def _decode_keywords(raw) -> list[str]:
+    data = _as_bytes(raw)
+    if not data:
+        return []
+    return [item for item in data.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00") if item]
+
+
 def _create_jpeg_with_metadata(path, *, caption: str | None = None, tags: list[str] | None = None) -> None:
     image = Image.new("RGB", (8, 8), color=(0, 128, 255))
     exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "Interop": {}, "thumbnail": None}
@@ -33,17 +56,8 @@ def test_write_jpeg_without_existing_exif(tmp_path):
     assert exif_blob
 
     exif_dict = piexif.load(exif_blob)
-    description = (
-        exif_dict["0th"]
-        .get(piexif.ImageIFD.ImageDescription, b"")
-        .decode("utf-8", errors="ignore")
-    )
-    keywords_raw = exif_dict["0th"].get(piexif.ImageIFD.XPKeywords, b"")
-    keywords = (
-        keywords_raw.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00")
-        if keywords_raw
-        else []
-    )
+    description = _decode_caption(exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b""))
+    keywords = _decode_keywords(exif_dict["0th"].get(piexif.ImageIFD.XPKeywords, b""))
 
     assert description == "Test caption"
     assert keywords == ["alpha", "beta"]
@@ -65,17 +79,8 @@ def test_skip_overwriting_existing_metadata(tmp_path):
 
     with Image.open(path) as image:
         exif_dict = piexif.load(image.info.get("exif"))
-    stored_caption = (
-        exif_dict["0th"]
-        .get(piexif.ImageIFD.ImageDescription, b"")
-        .decode("utf-8", errors="ignore")
-    )
-    stored_keywords = exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b"")
-    decoded_keywords = (
-        stored_keywords.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00")
-        if stored_keywords
-        else []
-    )
+    stored_caption = _decode_caption(exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b""))
+    decoded_keywords = _decode_keywords(exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b""))
 
     assert stored_caption == "Original caption"
     assert decoded_keywords == ["original"]
@@ -97,17 +102,8 @@ def test_overwrite_existing_metadata_when_enabled(tmp_path):
 
     with Image.open(path) as image:
         exif_dict = piexif.load(image.info.get("exif"))
-    stored_caption = (
-        exif_dict["0th"]
-        .get(piexif.ImageIFD.ImageDescription, b"")
-        .decode("utf-8", errors="ignore")
-    )
-    stored_keywords = exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b"")
-    decoded_keywords = (
-        stored_keywords.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00")
-        if stored_keywords
-        else []
-    )
+    stored_caption = _decode_caption(exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b""))
+    decoded_keywords = _decode_keywords(exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b""))
 
     assert stored_caption == "New caption"
     assert decoded_keywords == ["new-tag"]
@@ -129,17 +125,8 @@ def test_add_tags_when_missing_does_not_overwrite_caption(tmp_path):
 
     with Image.open(path) as image:
         exif_dict = piexif.load(image.info.get("exif"))
-    stored_caption = (
-        exif_dict["0th"]
-        .get(piexif.ImageIFD.ImageDescription, b"")
-        .decode("utf-8", errors="ignore")
-    )
-    stored_keywords = exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b"")
-    decoded_keywords = (
-        stored_keywords.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00")
-        if stored_keywords
-        else []
-    )
+    stored_caption = _decode_caption(exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b""))
+    decoded_keywords = _decode_keywords(exif_dict["0th"].get(getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E), b""))
 
     assert stored_caption == "Original caption"
     assert decoded_keywords == ["tag-a", "tag-b"]
@@ -169,17 +156,8 @@ def test_tuple_encoded_keywords_do_not_break(tmp_path):
     with Image.open(path) as image:
         exif_blob = image.info.get("exif")
     exif_dict = piexif.load(exif_blob)
-    stored_caption = (
-        exif_dict["0th"]
-        .get(piexif.ImageIFD.ImageDescription, b"")
-        .decode("utf-8", errors="ignore")
-    )
-    stored_keywords = exif_dict["0th"].get(xp_keywords_tag, b"")
-    decoded_keywords = (
-        stored_keywords.decode("utf-16le", errors="ignore").rstrip("\x00").split("\x00")
-        if stored_keywords
-        else []
-    )
+    stored_caption = _decode_caption(exif_dict["0th"].get(piexif.ImageIFD.ImageDescription, b""))
+    decoded_keywords = _decode_keywords(exif_dict["0th"].get(xp_keywords_tag, b""))
 
     assert stored_caption == "Caption"
     assert decoded_keywords == ["one", "two"]
