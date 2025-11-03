@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self.thread_pool = QThreadPool()
         self._current_worker: ProcessingWorker | None = None
         self._collected_paths: list[Path] = []
+        self._cursor_busy = False
 
         self._build_ui()
         self._rebuild_status_bar()
@@ -167,6 +169,7 @@ class MainWindow(QMainWindow):
             self.progress_panel.show_hint(
                 "Contacting remote model… the first run may take a minute while the model loads."
             )
+        self._set_busy_cursor(True)
         self._toggle_controls(False)
 
         worker = ProcessingWorker(self.analyzer, paths)
@@ -196,12 +199,24 @@ class MainWindow(QMainWindow):
     def _finalise_worker(self, results: list[AnalyzerResult]) -> None:
         self._current_worker = None
         self.progress_panel.set_busy(False)
+        self._set_busy_cursor(False)
         self._toggle_controls(True)
         if results:
             self._render_results(results)
             self.progress_panel.update_progress(len(results), len(results), "Done")
         else:
             self.progress_panel.reset()
+
+    def _set_busy_cursor(self, active: bool) -> None:
+        app = QApplication.instance()
+        if app is None:
+            return
+        if active and not self._cursor_busy:
+            app.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            self._cursor_busy = True
+        elif not active and self._cursor_busy:
+            app.restoreOverrideCursor()
+            self._cursor_busy = False
 
     def _render_results(self, results: list[AnalyzerResult]) -> None:
         self.results_view.clear()

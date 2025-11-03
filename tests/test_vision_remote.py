@@ -38,6 +38,13 @@ def test_normalise_tags_returns_unique_lowercase():
     assert [tag.value for tag in tags] == ["cat", "dog", "bird"]
 
 
+def test_parse_json_response_merges_multiple_objects():
+    model = OllamaVisionModel(AppConfig())
+    raw = '{"caption":"one"},\n{"tags":["alpha","beta"]}'
+    payload = model._parse_json_response(raw)
+    assert payload == {"caption": "one", "tags": ["alpha", "beta"]}
+
+
 def test_is_vision_candidate_by_keyword():
     model = OllamaVisionModel(AppConfig())
     assert model._is_vision_candidate("llava:13b", {})

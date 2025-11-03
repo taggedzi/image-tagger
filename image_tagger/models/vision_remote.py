@@ -34,7 +34,7 @@ except Exception:  # pragma: no cover - handled at runtime with an explicit erro
     Response = None  # type: ignore[assignment]
 
 
-_JSON_OBJECT_PATTERN = re.compile(r"\{.*\}", re.DOTALL)
+_JSON_OBJECT_PATTERN = re.compile(r"\{.*?\}", re.DOTALL)
 _VISION_KEYWORDS = {
     "vision",
     "multimodal",
@@ -197,18 +197,30 @@ class BaseRemoteVisionModel(TaggingModel):
         try:
             return json.loads(cleaned)
         except json.JSONDecodeError:
-            match = _JSON_OBJECT_PATTERN.search(cleaned)
-            if not match:
+            matches = list(_JSON_OBJECT_PATTERN.finditer(cleaned))
+            if not matches:
                 raise ModelError(
                     f"{self._info.display_name} returned non-JSON output: {cleaned!r}"
                 )
-            candidate = match.group(0)
-            try:
-                return json.loads(candidate)
-            except Exception as exc:  # pragma: no cover - defensive fallback
+            merged: dict[str, Any] = {}
+            errors: list[str] = []
+            for match in matches:
+                candidate = match.group(0)
+                try:
+                    fragment = json.loads(candidate)
+                    if isinstance(fragment, dict):
+                        merged.update(fragment)
+                except Exception as exc:  # pragma: no cover - defensive fallback
+                    errors.append(candidate)
+            if merged:
+                return merged
+            if errors:
                 raise ModelError(
-                    f"{self._info.display_name} produced invalid JSON: {candidate}"
-                ) from exc
+                    f"{self._info.display_name} produced invalid JSON fragments: {errors[0]}"
+                ) from None
+            raise ModelError(
+                f"{self._info.display_name} produced invalid JSON: {cleaned}"
+            )
 
     @staticmethod
     def _strip_markdown(text: str) -> str:
