@@ -9,7 +9,7 @@ Image Tagger is a cross-platform Python library and desktop application that cap
 - Two output modes: embed metadata inside supported formats or emit YAML sidecars
 - Validated settings dialog with persistent storage in the user's configuration directory
 - Extensible model registry with a lightweight fallback plus optional OpenCLIP, BLIP, and BLIP-2 captioning checkpoints (including quantized variants; BLIP-2 6.7B requires GPU)
-- Connect to local Ollama or LM Studio servers to run multimodal models such as Qwen2.5-VL, LLaVA, MiniCPM-V, Gemma 3, or PaliGemma 2
+- Connect to local Ollama servers to run multimodal models such as Qwen2.5-VL, LLaVA, MiniCPM-V, Gemma 3, or PaliGemma 2
 - Automatic GPU detection with graceful CPU fallback; optional CUDA wheels to light up NVIDIA hardware
 - Preserves existing embedded captions and tags unless you enable the overwrite toggle in settings
 - Clean separation between the core analysis pipeline, metadata IO, and the GUI
@@ -53,13 +53,11 @@ python -m image_tagger --headless --input /path/to/images --model builtin.simple
 
 Headless runs emit a JSON summary that lists captions, tags, and where the data was written.
 
-### Using Ollama or LM Studio vision models
+### Using Ollama vision models
 
-1. Install and launch the desired backend:
-   - **Ollama:** `ollama run llava` (or any other multimodal vision model such as `qwen2.5-vl`, `minicpm-v`, `gemma3`, `paligemma-2`).
-   - **LM Studio:** Start the local server (default `http://127.0.0.1:1234`) with a compatible vision checkpoint loaded.
-2. Open the Image Tagger settings dialog and choose **Ollama Vision** or **LM Studio Vision** from the model list.
-3. Adjust the *Remote base URL*, *Remote model id*, *Remote temperature*, *Remote max tokens*, and optional *Remote API key* fields as needed. Use **Refresh list** to pull the currently available vision-capable models from the connected backend. All remote-specific settings are persisted alongside the rest of the application configuration.
+1. Install and launch Ollama with a multimodal model, e.g. `ollama run llava` (or `qwen2.5-vl`, `minicpm-v`, `gemma3`, `paligemma-2`).
+2. Open the Image Tagger settings dialog and choose **Ollama Vision** from the model list.
+3. Adjust the *Remote base URL*, *Remote model id*, *Remote temperature*, *Remote max tokens*, and optional *Remote API key* fields as needed. Use **Refresh list** to pull the currently available vision-capable models from Ollama. All remote-specific settings are persisted alongside the rest of the application configuration.
 4. Run analyses through the GUI or via headless mode, e.g.
 
 ```bash
@@ -67,7 +65,7 @@ python -m image_tagger --headless --model remote.ollama --input ./images
 ```
 
 > **Tip:** The same remote settings are shared between the GUI and CLI modes. Configuration files now accept the following additional keys: `remote_base_url`, `remote_model`, `remote_temperature`, `remote_max_tokens`, `remote_timeout`, `remote_api_key`, and `overwrite_embedded_metadata`.
-> **Accessibility:** Vision models prompted through Ollama/LM Studio now generate 2–3 sentence captions optimised for alt text, highlighting subjects, relationships, and colours while staying under ~420 characters.
+> **Accessibility:** Vision models prompted through Ollama now generate 2–3 sentence captions optimised for alt text, highlighting subjects, relationships, and colours while staying under ~420 characters.
 
 ### Listing installed models
 

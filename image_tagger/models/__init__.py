@@ -6,7 +6,7 @@ from .builtin.simple import SimpleHeuristicModel
 from .blip import BlipCaptioningModel
 from .blip2 import Blip2CaptioningModel
 from .openclip import OpenClipTaggingModel
-from .vision_remote import OllamaVisionModel, LmStudioVisionModel
+from .vision_remote import OllamaVisionModel
 
 __all__ = [
     "AnalysisRequest",
@@ -20,5 +20,4 @@ __all__ = [
     "BlipCaptioningModel",
     "Blip2CaptioningModel",
     "OllamaVisionModel",
-    "LmStudioVisionModel",
 ]

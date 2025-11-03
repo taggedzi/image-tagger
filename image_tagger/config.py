@@ -86,7 +86,7 @@ class AppConfig(BaseModel):
     )
     remote_base_url: str = Field(
         default="http://127.0.0.1:11434",
-        description="Base URL for Ollama or LM Studio vision backends.",
+        description="Base URL for the Ollama vision backend.",
     )
     remote_model: str = Field(
         default="llava",

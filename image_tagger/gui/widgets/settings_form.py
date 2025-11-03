@@ -202,11 +202,11 @@ class SettingsDialog(QDialog):
 
     def _refresh_remote_models(self) -> None:
         model_id = self.model_combo.currentData()
-        if model_id not in {"remote.ollama", "remote.lmstudio"}:
+        if model_id != "remote.ollama":
             QMessageBox.information(
                 self,
                 "Remote discovery",
-                "Select the Ollama or LM Studio model before refreshing the remote list.",
+                "Select the Ollama model before refreshing the remote list.",
             )
             return
 

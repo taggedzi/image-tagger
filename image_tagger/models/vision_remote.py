@@ -1,4 +1,4 @@
-"""Vision-language model integration via Ollama and LM Studio."""
+"""Vision-language model integration via Ollama."""
 
 from __future__ import annotations
 
@@ -399,92 +399,9 @@ class OllamaVisionModel(BaseRemoteVisionModel):
         return results
 
 
-class LmStudioVisionModel(BaseRemoteVisionModel):
-    """Vision-language integration using LM Studio's OpenAI-compatible API."""
-
-    def __init__(self, config: AppConfig | None = None) -> None:
-        super().__init__(
-            identifier="remote.lmstudio",
-            display_name="LM Studio Vision",
-            description="Uses LM Studio's OpenAI-compatible endpoint for multimodal vision models.",
-            backend="lmstudio",
-            config=config,
-            tags=("remote", "lmstudio", "vision", "http"),
-        )
-
-    def _call_backend(
-        self,
-        encoded_image: str,
-        prompt: str,
-        request: AnalysisRequest,
-    ) -> str:
-        endpoint = f"{self._config.remote_base_url}/v1/chat/completions"
-        content = [
-            {"type": "text", "text": prompt},
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"},
-            },
-        ]
-        payload = {
-            "model": self._config.remote_model,
-            "messages": [
-                {"role": "system", "content": "You analyse images and speak JSON only."},
-                {"role": "user", "content": content},
-            ],
-            "temperature": self._config.remote_temperature,
-            "max_tokens": self._config.remote_max_tokens,
-            "response_format": {"type": "json_object"},
-        }
-        response = self._session_post(endpoint, payload)
-        data = response.json()
-        if "error" in data:
-            message = data["error"]
-            if isinstance(message, dict):
-                message = message.get("message", message)
-            raise ModelError(f"LM Studio backend error: {message}")
-        choices = data.get("choices")
-        if not choices:
-            raise ModelError("LM Studio backend returned no choices.")
-        message = choices[0].get("message", {})
-        content = message.get("content")
-        if isinstance(content, list):
-            # Some backends return structured content pieces.
-            combined = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-            content = combined or content
-        if not isinstance(content, str):
-            raise ModelError("LM Studio backend returned an unexpected payload.")
-        return content
-
-    def _fetch_remote_model_metadata(self) -> list[tuple[str, dict[str, Any]]]:
-        endpoint = f"{self._config.remote_base_url}/v1/models"
-        response = self._session_get(endpoint)
-        payload = response.json()
-        data = payload.get("data")
-        if not isinstance(data, list):
-            return []
-        results: list[tuple[str, dict[str, Any]]] = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            model_id = item.get("id")
-            if not isinstance(model_id, str):
-                continue
-            metadata = {
-                key: item[key]
-                for key in ("modalities", "type", "description", "capabilities")
-                if key in item
-            }
-            results.append((model_id, metadata))
-        return results
-
-
 def _register() -> None:
     ModelRegistry.register(
         "remote.ollama", lambda config=None: OllamaVisionModel(config=config)
-    )
-    ModelRegistry.register(
-        "remote.lmstudio", lambda config=None: LmStudioVisionModel(config=config)
     )
 
 
