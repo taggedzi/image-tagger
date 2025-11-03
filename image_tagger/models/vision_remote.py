@@ -151,7 +151,13 @@ class BaseRemoteVisionModel(TaggingModel):
 
         if request.generate_captions:
             instructions.append(
-                "Provide a concise descriptive caption of the primary subject in the image."
+                "Write an accessible, richly detailed description suitable for alt text."
+            )
+            instructions.append(
+                "Explain the overall scene, key objects, people or characters, their attributes, actions, relationships, and the dominant colours or lighting."
+            )
+            instructions.append(
+                "Use 2-3 sentences and keep the caption under 420 characters while remaining vivid and clear."
             )
         else:
             instructions.append("Set the caption field to null.")

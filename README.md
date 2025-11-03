@@ -67,6 +67,7 @@ python -m image_tagger --headless --model remote.ollama --input ./images
 ```
 
 > **Tip:** The same remote settings are shared between the GUI and CLI modes. Configuration files now accept the following additional keys: `remote_base_url`, `remote_model`, `remote_temperature`, `remote_max_tokens`, `remote_timeout`, `remote_api_key`, and `overwrite_embedded_metadata`.
+> **Accessibility:** Vision models prompted through Ollama/LM Studio now generate 2–3 sentence captions optimised for alt text, highlighting subjects, relationships, and colours while staying under ~420 characters.
 
 ### Listing installed models
 
