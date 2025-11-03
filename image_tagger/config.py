@@ -64,6 +64,12 @@ class AppConfig(BaseModel):
             "When true and supported, embed generated metadata directly in the image."
         ),
     )
+    overwrite_embedded_metadata: bool = Field(
+        default=False,
+        description=(
+            "When embedding metadata, overwrite existing caption/tag fields inside the image."
+        ),
+    )
     output_directory: Path | None = Field(
         default=None,
         description="Optional override directory for generated sidecars.",
@@ -78,6 +84,36 @@ class AppConfig(BaseModel):
         default=None,
         description="Optional locale hint for models that support multilingual output.",
     )
+    remote_base_url: str = Field(
+        default="http://127.0.0.1:11434",
+        description="Base URL for Ollama or LM Studio vision backends.",
+    )
+    remote_model: str = Field(
+        default="llava",
+        description="Model identifier served by the remote vision backend.",
+    )
+    remote_api_key: str | None = Field(
+        default=None,
+        description="Optional bearer token for remote vision backends that require authentication.",
+    )
+    remote_temperature: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature passed to remote vision backends.",
+    )
+    remote_max_tokens: int = Field(
+        default=768,
+        ge=64,
+        le=8192,
+        description="Maximum number of tokens requested from remote vision backends.",
+    )
+    remote_timeout: float = Field(
+        default=60.0,
+        ge=1.0,
+        le=600.0,
+        description="Timeout (seconds) for HTTP calls to remote vision services.",
+    )
 
     @model_validator(mode="after")
     def _validate_sidecar_extension(self) -> "AppConfig":
@@ -85,6 +121,18 @@ class AppConfig(BaseModel):
             raise ValueError("A sidecar extension must be configured for sidecar mode.")
         if self.sidecar_extension.startswith("."):
             self.sidecar_extension = self.sidecar_extension.lstrip(".")
+        return self
+
+    @model_validator(mode="after")
+    def _normalise_remote_settings(self) -> "AppConfig":
+        base = self.remote_base_url.strip()
+        if not base:
+            raise ValueError("Remote base URL must not be empty.")
+        if "://" not in base:
+            raise ValueError(
+                "Remote base URL must include a scheme such as http://localhost:11434."
+            )
+        self.remote_base_url = base.rstrip("/")
         return self
 
     def as_dict(self) -> dict[str, Any]:

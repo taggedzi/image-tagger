@@ -8,7 +8,10 @@ Image Tagger is a cross-platform Python library and desktop application that cap
 - Batch processing with threaded execution and live progress feedback
 - Two output modes: embed metadata inside supported formats or emit YAML sidecars
 - Validated settings dialog with persistent storage in the user's configuration directory
-- Extensible model registry with a lightweight fallback plus optional OpenCLIP and multiple BLIP captioning checkpoints
+- Extensible model registry with a lightweight fallback plus optional OpenCLIP, BLIP, and BLIP-2 captioning checkpoints (including quantized variants; BLIP-2 6.7B requires GPU)
+- Connect to local Ollama or LM Studio servers to run multimodal models such as Qwen2.5-VL, LLaVA, MiniCPM-V, Gemma 3, or PaliGemma 2
+- Automatic GPU detection with graceful CPU fallback; optional CUDA wheels to light up NVIDIA hardware
+- Preserves existing embedded captions and tags unless you enable the overwrite toggle in settings
 - Clean separation between the core analysis pipeline, metadata IO, and the GUI
 
 ## Getting started
@@ -27,7 +30,7 @@ pip install -U pip
 pip install -e .
 ```
 
-> **Note:** Optional extras can be installed with e.g. `pip install -e .[clip]` for OpenCLIP tagging, `pip install -e .[blip]` for BLIP captioning, or `pip install -e .[full]` for everything. The first time you run a BLIP or CLIP model, Hugging Face will download the weights (up to ~1 GB); this happens in the background once you start processing images.
+> **Note:** Optional extras can be installed with e.g. `pip install -e .[clip]` for OpenCLIP tagging, `pip install -e .[blip]` for BLIP captioning, `pip install -e .[blip2]` for BLIP-2 with quantization support, `pip install -e .[cuda]` for NVIDIA runtime libraries, or `pip install -e .[full]` for everything. The first time you run a BLIP/CLIP/BLIP-2 model, Hugging Face will download the weights (up to ~1 GB); this happens in the background once you start processing images. All BLIP-2 variants require a CUDA-capable GPU; INT8/INT4 modes additionally need `bitsandbytes` and are currently only supported on Linux/WSL (not native Windows).
 
 ### Launch the GUI
 
@@ -50,6 +53,21 @@ python -m image_tagger --headless --input /path/to/images --model builtin.simple
 
 Headless runs emit a JSON summary that lists captions, tags, and where the data was written.
 
+### Using Ollama or LM Studio vision models
+
+1. Install and launch the desired backend:
+   - **Ollama:** `ollama run llava` (or any other multimodal vision model such as `qwen2.5-vl`, `minicpm-v`, `gemma3`, `paligemma-2`).
+   - **LM Studio:** Start the local server (default `http://127.0.0.1:1234`) with a compatible vision checkpoint loaded.
+2. Open the Image Tagger settings dialog and choose **Ollama Vision** or **LM Studio Vision** from the model list.
+3. Adjust the *Remote base URL*, *Remote model id*, *Remote temperature*, *Remote max tokens*, and optional *Remote API key* fields as needed. Use **Refresh list** to pull the currently available vision-capable models from the connected backend. All remote-specific settings are persisted alongside the rest of the application configuration.
+4. Run analyses through the GUI or via headless mode, e.g.
+
+```bash
+python -m image_tagger --headless --model remote.ollama --input ./images
+```
+
+> **Tip:** The same remote settings are shared between the GUI and CLI modes. Configuration files now accept the following additional keys: `remote_base_url`, `remote_model`, `remote_temperature`, `remote_max_tokens`, `remote_timeout`, `remote_api_key`, and `overwrite_embedded_metadata`.
+
 ### Listing installed models
 
 ```bash
@@ -63,7 +81,7 @@ image_tagger/
 ├── config.py          # Pydantic-based application settings
 ├── settings_store.py  # Cross-platform config persistence helper
 ├── utils/             # Path discovery utilities
-├── models/            # Model interfaces, registry, heuristic/CLIP/BLIP implementations
+├── models/            # Model interfaces, registry, heuristic/CLIP/BLIP/BLIP-2 implementations
 ├── services/          # High-level pipeline coordinating models and IO
 ├── io/                # Metadata writers (EXIF/PNG) and YAML sidecars
 └── gui/               # PySide6 application with drag-and-drop and settings dialog

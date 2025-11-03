@@ -14,7 +14,7 @@ from PIL import Image
 from ..config import AppConfig, OutputMode
 from ..io.metadata import MetadataWriter, UnsupportedFormatError
 from ..io.yaml_sidecar import YamlSidecarWriter
-from ..models.base import AnalysisRequest, ModelOutput, TaggingModel
+from ..models.base import AnalysisRequest, ModelError, ModelOutput, TaggingModel
 from ..models.registry import ModelRegistry
 from ..utils.paths import resolve_image_paths
 
@@ -112,7 +112,22 @@ class ImageAnalyzer:
         model = self._get_model()
 
         with Image.open(image_path) as img:
-            output = model.analyze(img, request)
+            try:
+                output = model.analyze(img, request)
+            except ModelError as exc:
+                identifier = model.info().identifier
+                logger.warning(
+                    "Model '%s' could not analyze %s: %s", identifier, image_path, exc
+                )
+                return AnalyzerResult(
+                    image_path=image_path,
+                    caption=None,
+                    tags=[],
+                    embedded=False,
+                    sidecar_path=None,
+                    extras={"model": identifier},
+                    error_message=str(exc),
+                )
 
         prepared = self._prepare_output(output)
         model_identifier = model.info().identifier
@@ -159,6 +174,7 @@ class ImageAnalyzer:
                 image_path,
                 caption=caption if isinstance(caption, str) else None,
                 tags=[str(tag) for tag in tags],
+                overwrite_existing=self.config.overwrite_embedded_metadata,
             )
         except UnsupportedFormatError as exc:
             logger.info("%s; falling back to sidecar for %s", exc, image_path)
@@ -190,6 +206,8 @@ class ImageAnalyzer:
                 or self._model.info().identifier != self.config.model_name
             ):
                 logger.info("Loading model '%s'...", self.config.model_name)
-                self._model = ModelRegistry.get(self.config.model_name)
+                self._model = ModelRegistry.get(
+                    self.config.model_name, config=self.config
+                )
                 logger.info("Model '%s' ready.", self.config.model_name)
         return self._model

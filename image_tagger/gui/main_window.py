@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from ..config import AppConfig
 from ..services.analyzer import AnalyzerResult, ImageAnalyzer
 from ..settings_store import SettingsStore
-from ..utils.paths import resolve_image_paths
+from ..utils.paths import is_image_file, resolve_image_paths
 from .workers import ProcessingWorker
 from .widgets.drop_target import DropTargetWidget
 from .widgets.progress_panel import ProgressPanel
@@ -142,7 +142,8 @@ class MainWindow(QMainWindow):
                     continue
                 candidates.extend(discovered)
             elif path.is_file():
-                candidates.append(path)
+                if is_image_file(path):
+                    candidates.append(path)
 
         if not candidates:
             QMessageBox.information(self, "No images found", "Nothing to process.")
@@ -236,4 +237,3 @@ class MainWindow(QMainWindow):
     def _clear_results(self) -> None:
         self.results_view.clear()
         self.progress_panel.reset()
-

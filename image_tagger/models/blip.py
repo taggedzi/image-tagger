@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 
@@ -17,6 +18,9 @@ from .base import (
     TaggingModel,
 )
 from .registry import ModelRegistry
+from ..utils.devices import detect_torch_device
+
+logger = logging.getLogger(__name__)
 
 try:
     from transformers import pipeline
@@ -88,6 +92,7 @@ class BlipCaptioningModel(TaggingModel):
             tags=("transformers", "torch", "caption"),
         )
         self._pipeline = None
+        self._device_choice: str | int | None = None
 
     def info(self) -> ModelInfo:
         return self._info
@@ -99,12 +104,26 @@ class BlipCaptioningModel(TaggingModel):
                 "Install with `pip install image-tagger[blip]`."
             )
 
-        device = 0 if torch.cuda.is_available() else -1
+        device_str, message = detect_torch_device()
+        logger.info("[BLIP] %s", message)
+
+        if device_str.startswith("cuda"):
+            try:
+                _, index_str = device_str.split(":", 1)
+                device = int(index_str)
+            except Exception:
+                device = 0
+        elif device_str == "mps":
+            device = "mps"
+        else:
+            device = -1
+
         self._pipeline = pipeline(
             "image-to-text",
             model=self.model_id,
             device=device,
         )
+        self._device_choice = device_str
 
     def analyze(self, image: Image.Image, request: AnalysisRequest) -> ModelOutput:
         assert self._pipeline is not None
@@ -136,7 +155,14 @@ class BlipCaptioningModel(TaggingModel):
                 caption, max_count=request.max_tags, threshold=request.confidence_threshold
             )
 
-        return ModelOutput(caption=caption, tags=tags, extras={"model_id": self.model_id})
+        return ModelOutput(
+            caption=caption,
+            tags=tags,
+            extras={
+                "model_id": self.model_id,
+                "device": self._device_choice,
+            },
+        )
 
     @staticmethod
     def _extract_tags_from_caption(

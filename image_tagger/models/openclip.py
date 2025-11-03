@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Iterable, Sequence
 
@@ -17,6 +18,9 @@ from .base import (
     ModelError,
 )
 from .registry import ModelRegistry
+from ..utils.devices import detect_torch_device, torch_device
+
+logger = logging.getLogger(__name__)
 
 try:
     import torch
@@ -179,22 +183,41 @@ class OpenClipTaggingModel(TaggingModel):
                 "open-clip-torch and torch must be installed to use the OpenCLIP model. "
                 "Install with `pip install image-tagger[clip]`."
             )
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device_str, message = detect_torch_device()
+        logger.info("[OpenCLIP] %s", message)
+
+        if device_str.startswith("cuda"):
+            create_device = "cuda"
+            try:
+                _, index_str = device_str.split(":", 1)
+                torch.cuda.set_device(int(index_str))
+            except Exception:  # pragma: no cover - fallback to default device
+                logger.debug("Unable to set CUDA device to %s; using default.", device_str)
+        elif device_str == "cpu":
+            create_device = "cpu"
+        else:
+            logger.warning(
+                "OpenCLIP does not support device '%s'; falling back to CPU.", device_str
+            )
+            device_str = "cpu"
+            create_device = "cpu"
+
         model, _, preprocess = open_clip.create_model_and_transforms(
             self.model_name,
             pretrained=self.pretrained,
-            device=device,
+            device=create_device,
         )
         tokenizer = open_clip.get_tokenizer(self.model_name)
 
         model.eval()
+        model.to(torch_device(device_str))
 
         with torch.no_grad():
-            tokens = tokenizer(self.candidate_tags).to(device)
+            tokens = tokenizer(self.candidate_tags).to(torch_device(device_str))
             text_features = model.encode_text(tokens)
             text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        self._device = torch.device(device)
+        self._device = torch_device(device_str)
         self._model = model
         self._preprocess = preprocess
         self._tokenizer = tokenizer
@@ -235,7 +258,8 @@ class OpenClipTaggingModel(TaggingModel):
             ]
             caption = self._build_caption(top_tags)
 
-        return ModelOutput(caption=caption, tags=tags)
+        extras = {"device": str(self._device) if self._device is not None else "cpu"}
+        return ModelOutput(caption=caption, tags=tags, extras=extras)
 
     @staticmethod
     def _build_caption(tags: Iterable[str]) -> str:

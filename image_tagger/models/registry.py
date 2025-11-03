@@ -6,10 +6,11 @@ import logging
 from importlib import import_module
 from typing import Callable, Dict
 
+from ..config import AppConfig
 from .base import ModelInfo, TaggingModel
 
 
-Factory = Callable[[], TaggingModel]
+Factory = Callable[..., TaggingModel]
 logger = logging.getLogger(__name__)
 
 
@@ -36,6 +37,8 @@ class ModelRegistry:
             "image_tagger.models.builtin.simple",
             "image_tagger.models.openclip",
             "image_tagger.models.blip",
+            "image_tagger.models.blip2",
+            "image_tagger.models.vision_remote",
         ]
         for module_name in modules:
             try:
@@ -54,13 +57,27 @@ class ModelRegistry:
         return infos
 
     @classmethod
-    def get(cls, name: str) -> TaggingModel:
+    def get(cls, name: str, *, config: AppConfig | None = None) -> TaggingModel:
         cls.ensure_bootstrapped()
         try:
             factory = cls._factories[name]
         except KeyError as exc:
             available = ", ".join(sorted(cls._factories))
             raise KeyError(f"Unknown model '{name}'. Available: {available}") from exc
-        instance = factory()
+        instance = cls._instantiate_factory(factory, config=config)
         instance.load()
         return instance
+
+    @staticmethod
+    def _instantiate_factory(
+        factory: Callable[..., TaggingModel], *, config: AppConfig | None
+    ) -> TaggingModel:
+        if config is not None:
+            try:
+                return factory(config)
+            except TypeError:
+                logger.debug(
+                    "Factory %s does not accept configuration parameter; instantiating without it.",
+                    getattr(factory, "__name__", repr(factory)),
+                )
+        return factory()

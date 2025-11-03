@@ -3,8 +3,10 @@
 from .base import AnalysisRequest, ModelCapability, ModelInfo, ModelError, TaggingModel
 from .registry import ModelRegistry
 from .builtin.simple import SimpleHeuristicModel
-from .openclip import OpenClipTaggingModel
 from .blip import BlipCaptioningModel
+from .blip2 import Blip2CaptioningModel
+from .openclip import OpenClipTaggingModel
+from .vision_remote import OllamaVisionModel, LmStudioVisionModel
 
 __all__ = [
     "AnalysisRequest",
@@ -16,4 +18,7 @@ __all__ = [
     "SimpleHeuristicModel",
     "OpenClipTaggingModel",
     "BlipCaptioningModel",
+    "Blip2CaptioningModel",
+    "OllamaVisionModel",
+    "LmStudioVisionModel",
 ]
