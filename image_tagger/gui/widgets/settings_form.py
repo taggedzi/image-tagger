@@ -75,7 +75,13 @@ class SettingsDialog(QDialog):
         self.concurrency_spin.setRange(1, 32)
         self.concurrency_spin.setValue(config.max_concurrency)
 
-        self.sidecar_line = QLineEdit(config.sidecar_extension)
+        self.sidecar_type_combo = QComboBox()
+        self.sidecar_type_combo.addItem("YAML (.yaml)", "yaml")
+        self.sidecar_type_combo.addItem("JSON (.json)", "json")
+        current_extension = (config.sidecar_extension or "yaml").lower()
+        current_extension = "yaml" if current_extension == "yml" else current_extension
+        idx = self.sidecar_type_combo.findData(current_extension)
+        self.sidecar_type_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.embed_check = QCheckBox("Attempt to embed metadata when possible")
         self.embed_check.setChecked(config.embed_metadata)
 
@@ -136,7 +142,7 @@ class SettingsDialog(QDialog):
         form.addRow("Max tags", self.max_tags_spin)
         form.addRow("Confidence threshold", self.confidence_spin)
         form.addRow("Workers", self.concurrency_spin)
-        form.addRow("Sidecar extension", self.sidecar_line)
+        form.addRow("Sidecar file type", self.sidecar_type_combo)
         form.addRow("", self.embed_check)
         form.addRow("", self.overwrite_metadata_check)
         form.addRow("Output directory", output_dir_layout)
@@ -187,7 +193,7 @@ class SettingsDialog(QDialog):
             "max_tags": self.max_tags_spin.value(),
             "confidence_threshold": self.confidence_spin.value(),
             "max_concurrency": self.concurrency_spin.value(),
-            "sidecar_extension": self.sidecar_line.text(),
+            "sidecar_extension": self.sidecar_type_combo.currentData(),
             "embed_metadata": self.embed_check.isChecked(),
             "overwrite_embedded_metadata": self.overwrite_metadata_check.isChecked(),
             "output_directory": self._parse_optional_path(self.output_dir_edit.text()),
