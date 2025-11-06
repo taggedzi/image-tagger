@@ -8,9 +8,9 @@ Image Tagger is a cross-platform Python library and desktop application that cap
 - Batch processing with threaded execution and live progress feedback
 - Two output modes: embed metadata inside supported formats or emit YAML sidecars
 - Validated settings dialog with persistent storage in the user's configuration directory
-- Extensible model registry with a lightweight fallback plus optional OpenCLIP, BLIP, and BLIP-2 captioning checkpoints (including quantized variants; BLIP-2 6.7B requires GPU)
+- Extensible model registry with local BLIP captioners (base and large checkpoints) plus Ollama-powered multimodal models
 - Connect to local Ollama servers to run multimodal models such as Qwen2.5-VL, LLaVA, MiniCPM-V, Gemma 3, or PaliGemma 2
-- Automatic GPU detection with graceful CPU fallback; optional CUDA wheels to light up NVIDIA hardware
+- Automatic GPU detection with graceful CPU fallback for BLIP; PyTorch selects Metal/CUDA when available
 - Preserves existing embedded captions and tags unless you enable the overwrite toggle in settings
 - Clean separation between the core analysis pipeline, metadata IO, and the GUI
 
@@ -30,7 +30,7 @@ pip install -U pip
 pip install -e .
 ```
 
-> **Note:** Optional extras can be installed with e.g. `pip install -e .[clip]` for OpenCLIP tagging, `pip install -e .[blip]` for BLIP captioning, `pip install -e .[blip2]` for BLIP-2 with quantization support, `pip install -e .[cuda]` for NVIDIA runtime libraries, or `pip install -e .[full]` for everything. The first time you run a BLIP/CLIP/BLIP-2 model, Hugging Face will download the weights (up to ~1 GB); this happens in the background once you start processing images. All BLIP-2 variants require a CUDA-capable GPU; INT8/INT4 modes additionally need `bitsandbytes` and are currently only supported on Linux/WSL (not native Windows).
+> **Note:** Install the BLIP captioners with `pip install -e .[blip]`. The first time you run a BLIP model, Hugging Face will download the weights (up to ~1 GB); this happens automatically once you start processing images.
 
 ### Launch the GUI
 
@@ -48,7 +48,7 @@ Drag files onto the drop area or use the buttons to choose files/folders. Open t
 You can also process images without the GUI:
 
 ```bash
-python -m image_tagger --headless --input /path/to/images --model builtin.simple --output-mode sidecar
+python -m image_tagger --headless --input /path/to/images --model caption.blip-base --output-mode sidecar
 ```
 
 Headless runs emit a JSON summary that lists captions, tags, and where the data was written.
@@ -81,7 +81,7 @@ image_tagger/
 ├── config.py          # Pydantic-based application settings
 ├── settings_store.py  # Cross-platform config persistence helper
 ├── utils/             # Path discovery utilities
-├── models/            # Model interfaces, registry, heuristic/CLIP/BLIP/BLIP-2 implementations
+├── models/            # Model interfaces plus BLIP and Ollama implementations
 ├── services/          # High-level pipeline coordinating models and IO
 ├── io/                # Metadata writers (EXIF/PNG) and YAML sidecars
 └── gui/               # PySide6 application with drag-and-drop and settings dialog
@@ -99,7 +99,7 @@ The GUI automatically discovers new models via the registry.
 
 ## Next steps
 
-- Add additional ML models (e.g. Stable Diffusion captioners, ONNX pipelines)
+- Add additional ML models (e.g. OpenAI / Gemini multimodal endpoints)
 - Improve metadata embedding coverage for additional formats (WebP, TIFF, etc.)
 - Provide thumbnail previews inside the GUI result list
-- Bundle automated tests around the heuristic model and pipeline
+- Bundle automated tests around the BLIP pipelines and remote integrations

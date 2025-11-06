@@ -34,10 +34,7 @@ class ModelRegistry:
         if cls._bootstrap_complete:
             return
         modules = [
-            "image_tagger.models.builtin.simple",
-            "image_tagger.models.openclip",
             "image_tagger.models.blip",
-            "image_tagger.models.blip2",
             "image_tagger.models.vision_remote",
         ]
         for module_name in modules:

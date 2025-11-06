@@ -20,7 +20,7 @@ class AppConfig(BaseModel):
     """Validates and stores runtime settings for the application."""
 
     model_name: str = Field(
-        default="builtin.simple",
+        default="remote.ollama",
         description="Identifier of the selected tagging model.",
     )
     recursive: bool = Field(
