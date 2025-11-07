@@ -125,3 +125,11 @@ With these steps, someone with basic command-line skills can install Image Tagge
 - The desktop UI relies on PySide6/Qt for Python, which is licensed under the GNU LGPL v3.0. If you redistribute a packaged build, you must preserve Qt's license text and keep the Qt libraries relinkable (typically by shipping shared libraries).
 - Local captioning uses Salesforce Research's BLIP checkpoints via Hugging Face Transformers. Cite Salesforce BLIP if you redistribute the model weights and keep their MIT license in your distributions.
 - Remote captioning can talk to any Ollama-served multimodal model (LLaVA, Qwen-VL, MiniCPM-V, etc.). Each model and Ollama itself has its own license/usage policy—be sure your usage and redistribution comply with those upstream terms.
+
+## Release workflow
+1. **Set the version.** Edit `pyproject.toml` and bump `[project].version` to the number you intend to release. Commit this change (and anything else required) before building artifacts; release files should be created from clean, tagged commits.
+2. **Run checks.** Execute `make check` (or `make test`, `make lint`, etc.) to verify the codebase is ready. Commit any fixes.
+3. **Tag the release.** Create an annotated git tag such as `git tag -a v1.1.0 -m "Image Tagger 1.1.0"` and push it with `git push origin --tags`.
+4. **Build distributables.** Run `make build` to generate both the source distribution and wheel in `dist/`. The `build` package is included in the `dev` extra, so `make install-dev` installs everything required.
+5. **Publish.** Attach the wheel (`dist/*.whl`) and source tarball (`dist/*.tar.gz`) to a GitHub release for the corresponding tag, or upload them to PyPI with `twine` if desired. These generated files are artifacts—do not commit them to git.
+6. **Document the release.** In the GitHub Release notes (or CHANGELOG), summarize notable changes, requirements, and any manual steps (e.g., BLIP model downloads).

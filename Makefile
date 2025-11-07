@@ -2,7 +2,7 @@ PYTHON ?= python
 PKG = image_tagger
 SRC = $(PKG) tests
 
-.PHONY: install-dev fmt lint style test coverage check
+.PHONY: install-dev fmt lint style test coverage check build
 
 install-dev:
 	$(PYTHON) -m pip install -e .[dev]
@@ -23,3 +23,6 @@ coverage:
 	$(PYTHON) -m coverage run -m pytest && $(PYTHON) -m coverage report
 
 check: lint style test
+
+build:
+	$(PYTHON) -m build
