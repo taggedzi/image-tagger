@@ -1,7 +1,19 @@
+from types import SimpleNamespace
+
+import json
+from types import SimpleNamespace
+
 import pytest
+from PIL import Image
+
 from image_tagger.config import AppConfig
-from image_tagger.models.base import AnalysisRequest
-from image_tagger.models.vision_remote import OllamaVisionModel
+from image_tagger.models.base import AnalysisRequest, ModelError
+from image_tagger.models.vision_remote import (
+    BaseRemoteVisionModel,
+    OllamaVisionModel,
+    _encode_image,
+    _unique,
+)
 
 
 def _analysis_request(max_tags: int = 5) -> AnalysisRequest:
@@ -62,3 +74,147 @@ def test_discover_remote_models_filters(monkeypatch):
     monkeypatch.setattr(OllamaVisionModel, "_fetch_remote_model_metadata", fake_fetch)
     discovered = model.discover_remote_models()
     assert discovered == ["llava:13b"]
+
+
+def test_headers_include_api_key():
+    model = OllamaVisionModel(AppConfig(remote_api_key="secret"))
+    assert model._headers()["Authorization"] == "Bearer secret"
+
+
+def test_session_post_handles_timeout(monkeypatch):
+    class TimeoutSession:
+        @staticmethod
+        def post(*args, **kwargs):
+            raise TimeoutError()
+
+    config = AppConfig()
+    model = OllamaVisionModel(config)
+    model._session = TimeoutSession()
+    fake_requests = SimpleNamespace(
+        exceptions=SimpleNamespace(Timeout=TimeoutError),
+    )
+    monkeypatch.setattr("image_tagger.models.vision_remote.requests", fake_requests)
+
+    with pytest.raises(ModelError):
+        model._session_post("http://example", {}, timeout=1)
+
+
+def test_session_post_raises_on_http_error(monkeypatch):
+    class DummyResponse:
+        status_code = 500
+        text = "boom"
+
+    model = OllamaVisionModel(AppConfig())
+    model._session = SimpleNamespace(post=lambda *args, **kwargs: DummyResponse())
+    fake_requests = SimpleNamespace(
+        exceptions=SimpleNamespace(Timeout=TimeoutError),
+    )
+    monkeypatch.setattr("image_tagger.models.vision_remote.requests", fake_requests)
+
+    with pytest.raises(ModelError):
+        model._session_post("http://example", {}, timeout=1)
+
+
+class DummyRemoteModel(BaseRemoteVisionModel):
+    def __init__(self, response: str):
+        super().__init__(
+            identifier="remote.dummy",
+            display_name="Dummy Remote",
+            description="",
+            backend="dummy",
+            config=AppConfig(),
+            tags=("dummy",),
+        )
+        self._response = response
+        self.prompts: list[str] = []
+
+    def _call_backend(self, encoded_image: str, prompt: str, request: AnalysisRequest) -> str:
+        self.prompts.append(prompt)
+        return self._response
+
+
+def test_encode_image_and_unique_helpers():
+    image = Image.new("RGB", (4, 4), color=(10, 20, 30))
+    payload = _encode_image(image)
+    assert isinstance(payload, str)
+    assert len(payload) > 0
+    assert _unique(["a", "b", "a", "c"]) == ["a", "b", "c"]
+
+
+def test_base_remote_analyze_parses_backend(tmp_path):
+    model = DummyRemoteModel(json.dumps({"caption": "Hi", "tags": ["Tree", "tree", "Sky"]}))
+    request = _analysis_request(max_tags=3)
+    image = Image.new("RGB", (2, 2))
+
+    result = model.analyze(image, request)
+
+    assert result.caption == "Hi"
+    assert [tag.value for tag in result.tags] == ["tree", "sky"]
+    assert model.prompts
+
+
+def test_base_remote_prompt_varies_with_flags():
+    payload = json.dumps({"caption": None, "tags": []})
+    model = DummyRemoteModel(payload)
+    request = AnalysisRequest(
+        generate_captions=False,
+        generate_tags=False,
+        max_tags=1,
+        confidence_threshold=0.0,
+        locale=None,
+    )
+    image = Image.new("RGB", (1, 1))
+
+    model.analyze(image, request)
+
+    prompt = model.prompts[0]
+    assert "Set the caption field to null" in prompt
+    assert "Return an empty array for tags" in prompt
+
+
+def test_session_helpers_success_paths(monkeypatch):
+    class DummyResponse:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {}
+
+    model = DummyRemoteModel(json.dumps({"caption": "ok", "tags": []}))
+    model._session = SimpleNamespace(
+        post=lambda *args, **kwargs: DummyResponse(),
+        get=lambda *args, **kwargs: DummyResponse(),
+    )
+
+    assert model._session_post("http://example", {}) is not None
+    assert model._session_get("http://example") is not None
+
+
+def test_discover_remote_models_handles_errors(monkeypatch):
+    class BrokenRemote(DummyRemoteModel):
+        def _fetch_remote_model_metadata(self):
+            raise ModelError("boom")
+
+    model = BrokenRemote("{}")
+    assert model.discover_remote_models() == []
+
+
+def test_fetch_remote_model_metadata(monkeypatch):
+    model = OllamaVisionModel(AppConfig())
+
+    class DummyResponse:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return {"models": [{"model": "llava:13b", "details": {}}]}
+
+    fake_session = SimpleNamespace(get=lambda *args, **kwargs: DummyResponse())
+    model._session = fake_session
+    fake_requests = SimpleNamespace(
+        exceptions=SimpleNamespace(Timeout=TimeoutError),
+    )
+    monkeypatch.setattr("image_tagger.models.vision_remote.requests", fake_requests)
+
+    result = model._fetch_remote_model_metadata()
+    assert result[0][0] == "llava:13b"

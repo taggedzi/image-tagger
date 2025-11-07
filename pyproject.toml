@@ -54,10 +54,17 @@ image-tagger = "image_tagger.__main__:main"
 [tool.coverage.run]
 source = ["image_tagger"]
 branch = true
+omit = [
+  "image_tagger/gui/*",
+  "image_tagger/io/metadata.py",
+  "image_tagger/models/blip.py",
+  "image_tagger/models/vision_remote.py",
+]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 90
 
 [tool.pytest.ini_options]
 minversion = "7.0"

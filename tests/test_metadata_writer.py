@@ -1,6 +1,13 @@
 import pytest
-from image_tagger.io.metadata import MetadataWriter
 from PIL import Image
+
+from image_tagger.io.metadata import (
+    MetadataWriter,
+    UnsupportedFormatError,
+    _decode_utf8,
+    _decode_xp_keywords,
+    _ensure_bytes,
+)
 
 piexif = pytest.importorskip("piexif")
 XP_KEYWORDS_TAG = getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E)
@@ -184,3 +191,39 @@ def test_tuple_encoded_keywords_do_not_break(tmp_path):
 
     assert stored_caption == "Caption"
     assert decoded_keywords == ["one", "two"]
+
+
+def test_write_png_metadata(tmp_path):
+    path = tmp_path / "sample.png"
+    Image.new("RGB", (10, 10), color=(0, 0, 0)).save(path, format="PNG")
+
+    writer = MetadataWriter()
+    result = writer.write(
+        path,
+        caption="PNG caption",
+        tags=["one", "two"],
+        overwrite_existing=True,
+    )
+
+    assert result is True
+    with Image.open(path) as image:
+        info = dict(image.info)
+    assert info.get("Description") == "PNG caption"
+    assert info.get("Keywords") == "one,two"
+
+
+def test_write_rejects_unknown_extension(tmp_path):
+    path = tmp_path / "image.bmp"
+    Image.new("RGB", (4, 4)).save(path, format="BMP")
+    writer = MetadataWriter()
+    with pytest.raises(UnsupportedFormatError):
+        writer.write(path, caption="x", tags=["y"])
+
+
+def test_helper_conversions_cover_edge_cases():
+    assert _ensure_bytes(bytearray(b"abc")) == b"abc"
+    assert _ensure_bytes(memoryview(b"xyz")) == b"xyz"
+    assert _ensure_bytes([255, 0, 1]) == b"\xff\x00\x01"
+    assert _decode_utf8(b" hello ") == "hello"
+    assert _decode_utf8(b"") == ""
+    assert _decode_xp_keywords("a\x00b\x00".encode("utf-16le")) == ["a", "b"]
