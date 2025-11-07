@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QDoubleSpinBox,
     QToolButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -37,9 +39,9 @@ class SettingsDialog(QDialog):
         self._config: AppConfig | None = None
         self._field_min_width = 320
 
-        form = QFormLayout(self)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(12)
 
         self.model_combo = QComboBox()
         for info in ModelRegistry.list_model_infos():
@@ -156,7 +158,9 @@ class SettingsDialog(QDialog):
         self.remote_timeout_spin.setValue(config.remote_timeout)
         self._normalise_width(self.remote_timeout_spin)
 
-        form.addRow(
+        model_group = QGroupBox("Model & Analysis")
+        model_form = self._create_form_layout()
+        model_form.addRow(
             "Model",
             self._with_help(
                 self.model_combo,
@@ -165,32 +169,7 @@ class SettingsDialog(QDialog):
                 "the Ollama option sends each image to a running Ollama server over HTTP.",
             ),
         )
-        form.addRow(
-            "Output mode",
-            self._with_help(
-                self.output_mode_combo,
-                "Output mode",
-                "Select how metadata is persisted. 'Embed' writes captions/tags into supported "
-                "image formats, while 'Sidecar' emits YAML/JSON files next to each image.",
-            ),
-        )
-        form.addRow(
-            "",
-            self._with_help(
-                self.recursive_check,
-                "Sub-folders",
-                "Enable this to walk through any sub-directories found under the chosen folder.",
-            ),
-        )
-        form.addRow(
-            "",
-            self._with_help(
-                self.hidden_check,
-                "Hidden files",
-                "Toggle whether dot-prefixed files and folders should be processed.",
-            ),
-        )
-        form.addRow(
+        model_form.addRow(
             "",
             self._with_help(
                 self.captions_check,
@@ -198,7 +177,7 @@ class SettingsDialog(QDialog):
                 "Controls whether the selected model should return natural-language descriptions.",
             ),
         )
-        form.addRow(
+        model_form.addRow(
             "",
             self._with_help(
                 self.tags_check,
@@ -206,7 +185,7 @@ class SettingsDialog(QDialog):
                 "Controls whether keyword tags should be produced from the caption/model output.",
             ),
         )
-        form.addRow(
+        model_form.addRow(
             "Max tags",
             self._with_help(
                 self.max_tags_spin,
@@ -214,7 +193,7 @@ class SettingsDialog(QDialog):
                 "Upper limit on how many tags are kept per image. Lower numbers keep the output concise.",
             ),
         )
-        form.addRow(
+        model_form.addRow(
             "Confidence threshold",
             self._with_help(
                 self.confidence_spin,
@@ -223,7 +202,36 @@ class SettingsDialog(QDialog):
                 "Lower this to accept more speculative tags.",
             ),
         )
-        form.addRow(
+        model_form.addRow(
+            "Locale",
+            self._with_help(
+                self.locale_edit,
+                "Locale",
+                "Optional hint that nudges compatible models to respond in the specified language (e.g. 'en-US' or 'fr').",
+            ),
+        )
+        model_group.setLayout(model_form)
+        main_layout.addWidget(model_group)
+
+        processing_group = QGroupBox("Batch Processing")
+        processing_form = self._create_form_layout()
+        processing_form.addRow(
+            "",
+            self._with_help(
+                self.recursive_check,
+                "Sub-folders",
+                "Enable this to walk through any sub-directories found under the chosen folder.",
+            ),
+        )
+        processing_form.addRow(
+            "",
+            self._with_help(
+                self.hidden_check,
+                "Hidden files",
+                "Toggle whether dot-prefixed files and folders should be processed.",
+            ),
+        )
+        processing_form.addRow(
             "Workers",
             self._with_help(
                 self.concurrency_spin,
@@ -232,7 +240,21 @@ class SettingsDialog(QDialog):
                 "but note that heavy models will consume more CPU/GPU memory.",
             ),
         )
-        form.addRow(
+        processing_group.setLayout(processing_form)
+        main_layout.addWidget(processing_group)
+
+        output_group = QGroupBox("Metadata Output")
+        output_form = self._create_form_layout()
+        output_form.addRow(
+            "Output mode",
+            self._with_help(
+                self.output_mode_combo,
+                "Output mode",
+                "Select how metadata is persisted. 'Embed' writes captions/tags into supported "
+                "image formats, while 'Sidecar' emits YAML/JSON files next to each image.",
+            ),
+        )
+        output_form.addRow(
             "Sidecar file type",
             self._with_help(
                 self.sidecar_type_combo,
@@ -240,7 +262,7 @@ class SettingsDialog(QDialog):
                 "Choose YAML or JSON for generated sidecar files when sidecar mode is active.",
             ),
         )
-        form.addRow(
+        output_form.addRow(
             "",
             self._with_help(
                 self.embed_check,
@@ -248,7 +270,7 @@ class SettingsDialog(QDialog):
                 "When enabled, the app attempts to write captions and tags directly into the image metadata.",
             ),
         )
-        form.addRow(
+        output_form.addRow(
             "",
             self._with_help(
                 self.overwrite_metadata_check,
@@ -256,7 +278,7 @@ class SettingsDialog(QDialog):
                 "Enable this if you want embedded captions/tags to replace any existing values in the file.",
             ),
         )
-        form.addRow(
+        output_form.addRow(
             "Output directory",
             self._with_help(
                 output_dir_container,
@@ -264,15 +286,12 @@ class SettingsDialog(QDialog):
                 "Optional override folder for generated sidecars. Leave blank to write files next to each image.",
             ),
         )
-        form.addRow(
-            "Locale",
-            self._with_help(
-                self.locale_edit,
-                "Locale",
-                "Optional hint that nudges compatible models to respond in the specified language (e.g. 'en-US' or 'fr').",
-            ),
-        )
-        form.addRow(
+        output_group.setLayout(output_form)
+        main_layout.addWidget(output_group)
+
+        remote_group = QGroupBox("Ollama Remote Settings")
+        remote_form = self._create_form_layout()
+        remote_form.addRow(
             "Remote base URL",
             self._with_help(
                 self.remote_base_url_edit,
@@ -280,7 +299,7 @@ class SettingsDialog(QDialog):
                 "HTTP address of your Ollama server, typically http://localhost:11434 when running locally.",
             ),
         )
-        form.addRow(
+        remote_form.addRow(
             "Remote model id",
             self._with_help(
                 remote_model_container,
@@ -288,7 +307,7 @@ class SettingsDialog(QDialog):
                 "Name of the Ollama model to invoke (e.g. 'llava:13b'). Use the Refresh button to query the server.",
             ),
         )
-        form.addRow(
+        remote_form.addRow(
             "Remote API key",
             self._with_help(
                 self.remote_api_key_edit,
@@ -296,7 +315,7 @@ class SettingsDialog(QDialog):
                 "Optional bearer token sent with every remote request. Leave empty if your server is unsecured.",
             ),
         )
-        form.addRow(
+        remote_form.addRow(
             "Remote temperature",
             self._with_help(
                 self.remote_temperature_spin,
@@ -304,7 +323,7 @@ class SettingsDialog(QDialog):
                 "Controls response randomness for remote models. Smaller numbers yield more deterministic captions.",
             ),
         )
-        form.addRow(
+        remote_form.addRow(
             "Remote max tokens",
             self._with_help(
                 self.remote_max_tokens_spin,
@@ -312,7 +331,7 @@ class SettingsDialog(QDialog):
                 "Upper bound on how many tokens the remote backend may return for each request.",
             ),
         )
-        form.addRow(
+        remote_form.addRow(
             "Remote timeout (s)",
             self._with_help(
                 self.remote_timeout_spin,
@@ -320,15 +339,21 @@ class SettingsDialog(QDialog):
                 "How long to wait for remote HTTP responses. Increase this if large models take longer to start.",
             ),
         )
+        remote_group.setLayout(remote_form)
+        self.remote_group = remote_group
+        main_layout.addWidget(remote_group)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
-        form.addRow(buttons)
+        main_layout.addWidget(buttons, alignment=Qt.AlignmentFlag.AlignRight)
 
-        self.setMinimumWidth(520)
+        self.model_combo.currentIndexChanged.connect(self._on_model_selection_changed)
+        self._on_model_selection_changed()
+
+        self.setMinimumWidth(560)
 
     def _select_output_dir(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "Select output folder")
@@ -463,3 +488,14 @@ class SettingsDialog(QDialog):
 
     def _normalise_width(self, widget: QWidget) -> None:
         widget.setMinimumWidth(self._field_min_width)
+
+    def _create_form_layout(self) -> QFormLayout:
+        layout = QFormLayout()
+        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        return layout
+
+    def _on_model_selection_changed(self) -> None:
+        model_id = self.model_combo.currentData()
+        show_remote = model_id == "remote.ollama"
+        self.remote_group.setVisible(show_remote)
