@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from functools import partial
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -17,6 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QDoubleSpinBox,
+    QToolButton,
     QWidget,
 )
 
@@ -32,9 +35,11 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
         self._original_config = config
         self._config: AppConfig | None = None
+        self._field_min_width = 320
 
         form = QFormLayout(self)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         self.model_combo = QComboBox()
         for info in ModelRegistry.list_model_infos():
@@ -42,12 +47,14 @@ class SettingsDialog(QDialog):
         idx = self.model_combo.findData(config.model_name)
         if idx >= 0:
             self.model_combo.setCurrentIndex(idx)
+        self._normalise_width(self.model_combo)
 
         self.output_mode_combo = QComboBox()
         for mode in OutputMode:
             self.output_mode_combo.addItem(mode.name.title(), mode.value)
         mode_index = self.output_mode_combo.findData(config.output_mode.value)
         self.output_mode_combo.setCurrentIndex(max(mode_index, 0))
+        self._normalise_width(self.output_mode_combo)
 
         self.recursive_check = QCheckBox("Recurse into sub-folders")
         self.recursive_check.setChecked(config.recursive)
@@ -64,16 +71,19 @@ class SettingsDialog(QDialog):
         self.max_tags_spin = QSpinBox()
         self.max_tags_spin.setRange(1, 128)
         self.max_tags_spin.setValue(config.max_tags)
+        self._normalise_width(self.max_tags_spin)
 
         self.confidence_spin = QDoubleSpinBox()
         self.confidence_spin.setRange(0.0, 1.0)
         self.confidence_spin.setSingleStep(0.05)
         self.confidence_spin.setDecimals(2)
         self.confidence_spin.setValue(config.confidence_threshold)
+        self._normalise_width(self.confidence_spin)
 
         self.concurrency_spin = QSpinBox()
         self.concurrency_spin.setRange(1, 32)
         self.concurrency_spin.setValue(config.max_concurrency)
+        self._normalise_width(self.concurrency_spin)
 
         self.sidecar_type_combo = QComboBox()
         self.sidecar_type_combo.addItem("YAML (.yaml)", "yaml")
@@ -82,6 +92,7 @@ class SettingsDialog(QDialog):
         current_extension = "yaml" if current_extension == "yml" else current_extension
         idx = self.sidecar_type_combo.findData(current_extension)
         self.sidecar_type_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._normalise_width(self.sidecar_type_combo)
         self.embed_check = QCheckBox("Attempt to embed metadata when possible")
         self.embed_check.setChecked(config.embed_metadata)
 
@@ -96,63 +107,219 @@ class SettingsDialog(QDialog):
         browse_button = QPushButton("Browse…")
         browse_button.clicked.connect(self._select_output_dir)
 
-        output_dir_layout = QHBoxLayout()
+        output_dir_container = QWidget()
+        output_dir_layout = QHBoxLayout(output_dir_container)
+        output_dir_layout.setContentsMargins(0, 0, 0, 0)
         output_dir_layout.addWidget(self.output_dir_edit)
         output_dir_layout.addWidget(browse_button)
+        self._normalise_width(output_dir_container)
 
         self.locale_edit = QLineEdit(config.localization or "")
+        self._normalise_width(self.locale_edit)
 
         self.remote_base_url_edit = QLineEdit(config.remote_base_url)
+        self._normalise_width(self.remote_base_url_edit)
         self.remote_model_combo = QComboBox()
         self.remote_model_combo.setEditable(True)
         self.remote_model_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.remote_model_combo.setEditText(config.remote_model)
         self.remote_refresh_button = QPushButton("Refresh list")
         self.remote_refresh_button.clicked.connect(self._refresh_remote_models)
-        remote_model_layout = QHBoxLayout()
+        remote_model_container = QWidget()
+        remote_model_layout = QHBoxLayout(remote_model_container)
+        remote_model_layout.setContentsMargins(0, 0, 0, 0)
         remote_model_layout.addWidget(self.remote_model_combo)
         remote_model_layout.addWidget(self.remote_refresh_button)
+        self._normalise_width(remote_model_container)
 
         self.remote_api_key_edit = QLineEdit(config.remote_api_key or "")
         self.remote_api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._normalise_width(self.remote_api_key_edit)
 
         self.remote_temperature_spin = QDoubleSpinBox()
         self.remote_temperature_spin.setRange(0.0, 2.0)
         self.remote_temperature_spin.setSingleStep(0.05)
         self.remote_temperature_spin.setDecimals(2)
         self.remote_temperature_spin.setValue(config.remote_temperature)
+        self._normalise_width(self.remote_temperature_spin)
 
         self.remote_max_tokens_spin = QSpinBox()
         self.remote_max_tokens_spin.setRange(64, 8192)
         self.remote_max_tokens_spin.setSingleStep(32)
         self.remote_max_tokens_spin.setValue(config.remote_max_tokens)
+        self._normalise_width(self.remote_max_tokens_spin)
 
         self.remote_timeout_spin = QDoubleSpinBox()
         self.remote_timeout_spin.setRange(1.0, 600.0)
         self.remote_timeout_spin.setSingleStep(1.0)
         self.remote_timeout_spin.setDecimals(1)
         self.remote_timeout_spin.setValue(config.remote_timeout)
+        self._normalise_width(self.remote_timeout_spin)
 
-        form.addRow("Model", self.model_combo)
-        form.addRow("Output mode", self.output_mode_combo)
-        form.addRow("", self.recursive_check)
-        form.addRow("", self.hidden_check)
-        form.addRow("", self.captions_check)
-        form.addRow("", self.tags_check)
-        form.addRow("Max tags", self.max_tags_spin)
-        form.addRow("Confidence threshold", self.confidence_spin)
-        form.addRow("Workers", self.concurrency_spin)
-        form.addRow("Sidecar file type", self.sidecar_type_combo)
-        form.addRow("", self.embed_check)
-        form.addRow("", self.overwrite_metadata_check)
-        form.addRow("Output directory", output_dir_layout)
-        form.addRow("Locale", self.locale_edit)
-        form.addRow("Remote base URL", self.remote_base_url_edit)
-        form.addRow("Remote model id", remote_model_layout)
-        form.addRow("Remote API key", self.remote_api_key_edit)
-        form.addRow("Remote temperature", self.remote_temperature_spin)
-        form.addRow("Remote max tokens", self.remote_max_tokens_spin)
-        form.addRow("Remote timeout (s)", self.remote_timeout_spin)
+        form.addRow(
+            "Model",
+            self._with_help(
+                self.model_combo,
+                "Model",
+                "Choose which captioning backend to run. BLIP checkpoints execute locally; "
+                "the Ollama option sends each image to a running Ollama server over HTTP.",
+            ),
+        )
+        form.addRow(
+            "Output mode",
+            self._with_help(
+                self.output_mode_combo,
+                "Output mode",
+                "Select how metadata is persisted. 'Embed' writes captions/tags into supported "
+                "image formats, while 'Sidecar' emits YAML/JSON files next to each image.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.recursive_check,
+                "Sub-folders",
+                "Enable this to walk through any sub-directories found under the chosen folder.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.hidden_check,
+                "Hidden files",
+                "Toggle whether dot-prefixed files and folders should be processed.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.captions_check,
+                "Generate captions",
+                "Controls whether the selected model should return natural-language descriptions.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.tags_check,
+                "Generate tags",
+                "Controls whether keyword tags should be produced from the caption/model output.",
+            ),
+        )
+        form.addRow(
+            "Max tags",
+            self._with_help(
+                self.max_tags_spin,
+                "Maximum tags",
+                "Upper limit on how many tags are kept per image. Lower numbers keep the output concise.",
+            ),
+        )
+        form.addRow(
+            "Confidence threshold",
+            self._with_help(
+                self.confidence_spin,
+                "Confidence threshold",
+                "Minimum confidence a generated tag must have before it is kept. "
+                "Lower this to accept more speculative tags.",
+            ),
+        )
+        form.addRow(
+            "Workers",
+            self._with_help(
+                self.concurrency_spin,
+                "Workers",
+                "How many images to process at the same time. Increase to speed up large batches, "
+                "but note that heavy models will consume more CPU/GPU memory.",
+            ),
+        )
+        form.addRow(
+            "Sidecar file type",
+            self._with_help(
+                self.sidecar_type_combo,
+                "Sidecar file type",
+                "Choose YAML or JSON for generated sidecar files when sidecar mode is active.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.embed_check,
+                "Embed metadata",
+                "When enabled, the app attempts to write captions and tags directly into the image metadata.",
+            ),
+        )
+        form.addRow(
+            "",
+            self._with_help(
+                self.overwrite_metadata_check,
+                "Overwrite metadata",
+                "Enable this if you want embedded captions/tags to replace any existing values in the file.",
+            ),
+        )
+        form.addRow(
+            "Output directory",
+            self._with_help(
+                output_dir_container,
+                "Output directory",
+                "Optional override folder for generated sidecars. Leave blank to write files next to each image.",
+            ),
+        )
+        form.addRow(
+            "Locale",
+            self._with_help(
+                self.locale_edit,
+                "Locale",
+                "Optional hint that nudges compatible models to respond in the specified language (e.g. 'en-US' or 'fr').",
+            ),
+        )
+        form.addRow(
+            "Remote base URL",
+            self._with_help(
+                self.remote_base_url_edit,
+                "Remote base URL",
+                "HTTP address of your Ollama server, typically http://localhost:11434 when running locally.",
+            ),
+        )
+        form.addRow(
+            "Remote model id",
+            self._with_help(
+                remote_model_container,
+                "Remote model id",
+                "Name of the Ollama model to invoke (e.g. 'llava:13b'). Use the Refresh button to query the server.",
+            ),
+        )
+        form.addRow(
+            "Remote API key",
+            self._with_help(
+                self.remote_api_key_edit,
+                "Remote API key",
+                "Optional bearer token sent with every remote request. Leave empty if your server is unsecured.",
+            ),
+        )
+        form.addRow(
+            "Remote temperature",
+            self._with_help(
+                self.remote_temperature_spin,
+                "Remote temperature",
+                "Controls response randomness for remote models. Smaller numbers yield more deterministic captions.",
+            ),
+        )
+        form.addRow(
+            "Remote max tokens",
+            self._with_help(
+                self.remote_max_tokens_spin,
+                "Remote max tokens",
+                "Upper bound on how many tokens the remote backend may return for each request.",
+            ),
+        )
+        form.addRow(
+            "Remote timeout (s)",
+            self._with_help(
+                self.remote_timeout_spin,
+                "Remote timeout",
+                "How long to wait for remote HTTP responses. Increase this if large models take longer to start.",
+            ),
+        )
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
@@ -161,7 +328,7 @@ class SettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
 
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(520)
 
     def _select_output_dir(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "Select output folder")
@@ -273,3 +440,26 @@ class SettingsDialog(QDialog):
 
     def config(self) -> AppConfig:
         return self._config or self._original_config
+
+    def _with_help(self, widget: QWidget, title: str, message: str) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(widget)
+        layout.addStretch()
+        layout.addWidget(self._make_help_button(title, message))
+        self._normalise_width(container)
+        return container
+
+    def _make_help_button(self, title: str, message: str) -> QToolButton:
+        button = QToolButton(self)
+        button.setText("?")
+        button.setAutoRaise(True)
+        button.setFixedSize(24, 24)
+        button.clicked.connect(
+            partial(QMessageBox.information, self, title, message)
+        )
+        return button
+
+    def _normalise_width(self, widget: QWidget) -> None:
+        widget.setMinimumWidth(self._field_min_width)
