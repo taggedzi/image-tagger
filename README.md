@@ -119,3 +119,9 @@ Headless runs print a JSON summary with every caption, tag list, and destination
    - List extra dependencies inside `pyproject.toml` under `[project.optional-dependencies]`.
 
 With these steps, someone with basic command-line skills can install Image Tagger in an isolated Python environment, choose either local BLIP or Ollama-powered captions, and start tagging images in minutes.
+
+## Licensing and acknowledgements
+- Image Tagger itself is released under the MIT License (see `LICENSE`). Third-party libraries and models that ship with or are installed alongside the app are documented in `THIRD_PARTY_NOTICES.md` plus the companion files inside the `licenses/` directory.
+- The desktop UI relies on PySide6/Qt for Python, which is licensed under the GNU LGPL v3.0. If you redistribute a packaged build, you must preserve Qt's license text and keep the Qt libraries relinkable (typically by shipping shared libraries).
+- Local captioning uses Salesforce Research's BLIP checkpoints via Hugging Face Transformers. Cite Salesforce BLIP if you redistribute the model weights and keep their MIT license in your distributions.
+- Remote captioning can talk to any Ollama-served multimodal model (LLaVA, Qwen-VL, MiniCPM-V, etc.). Each model and Ollama itself has its own license/usage policy—be sure your usage and redistribution comply with those upstream terms.
