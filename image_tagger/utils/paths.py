@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
 
 IMAGE_EXTENSIONS = {
     ".jpg",
@@ -87,4 +87,3 @@ def _is_hidden(path: Path) -> bool:
         return bool(attrs & 2)  # FILE_ATTRIBUTE_HIDDEN bit
     except (AttributeError, ImportError, OSError):
         return False
-

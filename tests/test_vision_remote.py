@@ -1,5 +1,4 @@
 import pytest
-
 from image_tagger.config import AppConfig
 from image_tagger.models.base import AnalysisRequest
 from image_tagger.models.vision_remote import OllamaVisionModel

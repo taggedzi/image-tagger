@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -19,7 +20,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
-    QDoubleSpinBox,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -190,7 +190,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.max_tags_spin,
                 "Maximum tags",
-                "Upper limit on how many tags are kept per image. Lower numbers keep the output concise.",
+                "Upper limit on how many tags are kept per image. "
+                "Lower numbers keep the output concise.",
             ),
         )
         model_form.addRow(
@@ -207,7 +208,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.locale_edit,
                 "Locale",
-                "Optional hint that nudges compatible models to respond in the specified language (e.g. 'en-US' or 'fr').",
+                "Optional hint that nudges compatible models to respond in the specified "
+                "language (e.g. 'en-US' or 'fr').",
             ),
         )
         model_group.setLayout(model_form)
@@ -267,7 +269,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.embed_check,
                 "Embed metadata",
-                "When enabled, the app attempts to write captions and tags directly into the image metadata.",
+                "When enabled, the app attempts to write captions and tags directly "
+                "into the image metadata.",
             ),
         )
         output_form.addRow(
@@ -275,7 +278,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.overwrite_metadata_check,
                 "Overwrite metadata",
-                "Enable this if you want embedded captions/tags to replace any existing values in the file.",
+                "Enable this if you want embedded captions/tags to replace any "
+                "existing values in the file.",
             ),
         )
         output_form.addRow(
@@ -283,7 +287,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 output_dir_container,
                 "Output directory",
-                "Optional override folder for generated sidecars. Leave blank to write files next to each image.",
+                "Optional override folder for generated sidecars. Leave blank to write "
+                "files next to each image.",
             ),
         )
         output_group.setLayout(output_form)
@@ -296,7 +301,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.remote_base_url_edit,
                 "Remote base URL",
-                "HTTP address of your Ollama server, typically http://localhost:11434 when running locally.",
+                "HTTP address of your Ollama server, typically http://localhost:11434 "
+                "when running locally.",
             ),
         )
         remote_form.addRow(
@@ -304,7 +310,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 remote_model_container,
                 "Remote model id",
-                "Name of the Ollama model to invoke (e.g. 'llava:13b'). Use the Refresh button to query the server.",
+                "Name of the Ollama model to invoke (e.g. 'llava:13b'). Use the "
+                "Refresh button to query the server.",
             ),
         )
         remote_form.addRow(
@@ -312,7 +319,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.remote_api_key_edit,
                 "Remote API key",
-                "Optional bearer token sent with every remote request. Leave empty if your server is unsecured.",
+                "Optional bearer token sent with every remote request. Leave empty if "
+                "your server is unsecured.",
             ),
         )
         remote_form.addRow(
@@ -320,7 +328,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.remote_temperature_spin,
                 "Remote temperature",
-                "Controls response randomness for remote models. Smaller numbers yield more deterministic captions.",
+                "Controls response randomness for remote models. Smaller numbers yield "
+                "more deterministic captions.",
             ),
         )
         remote_form.addRow(
@@ -336,7 +345,8 @@ class SettingsDialog(QDialog):
             self._with_help(
                 self.remote_timeout_spin,
                 "Remote timeout",
-                "How long to wait for remote HTTP responses. Increase this if large models take longer to start.",
+                "How long to wait for remote HTTP responses. Increase this if large "
+                "models take longer to start.",
             ),
         )
         remote_group.setLayout(remote_form)

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from importlib import import_module
-from typing import Callable, Dict
 
 from ..config import AppConfig
 from .base import ModelInfo, TaggingModel
-
 
 Factory = Callable[..., TaggingModel]
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 class ModelRegistry:
     """Tracks available model factories and lazily loads them on demand."""
 
-    _factories: Dict[str, Factory] = {}
+    _factories: dict[str, Factory] = {}
     _bootstrap_complete: bool = False
 
     @classmethod

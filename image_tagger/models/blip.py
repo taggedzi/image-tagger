@@ -8,17 +8,17 @@ import re
 
 from PIL import Image
 
+from ..utils.devices import detect_torch_device
 from .base import (
     AnalysisRequest,
     ModelCapability,
+    ModelError,
     ModelInfo,
     ModelOutput,
     ModelTag,
-    ModelError,
     TaggingModel,
 )
 from .registry import ModelRegistry
-from ..utils.devices import detect_torch_device
 
 logger = logging.getLogger(__name__)
 
@@ -208,15 +208,20 @@ def _register() -> None:
     ]
 
     for identifier, model_id, label, desc in available_models:
-        ModelRegistry.register(
-            identifier,
-            lambda model_id=model_id, identifier=identifier, label=label, desc=desc: BlipCaptioningModel(
+        def _factory(
+            model_id=model_id,
+            identifier=identifier,
+            label=label,
+            desc=desc,
+        ) -> BlipCaptioningModel:
+            return BlipCaptioningModel(
                 model_id=model_id,
                 identifier=identifier,
                 display_name=label,
                 description=desc,
-            ),
-        )
+            )
+
+        ModelRegistry.register(identifier, _factory)
 
 
 _register()

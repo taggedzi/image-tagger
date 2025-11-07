@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
 from PySide6.QtCore import QObject, QRunnable, Signal
 
-from ..services.analyzer import AnalyzerResult, ImageAnalyzer
+from ..services.analyzer import ImageAnalyzer
 
 
 class WorkerSignals(QObject):
@@ -37,4 +37,3 @@ class ProcessingWorker(QRunnable):
 
     def _emit_progress(self, index: int, total: int, path: Path) -> None:
         self.signals.progress.emit(index, total, str(path))
-

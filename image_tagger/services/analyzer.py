@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from typing import Callable, Sequence
 
 from PIL import Image
 

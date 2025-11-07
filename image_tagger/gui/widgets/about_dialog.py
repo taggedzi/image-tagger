@@ -106,9 +106,9 @@ class AboutDialog(QDialog):
             self.setWindowIcon(icon)
 
         version, homepage, summary = _get_package_metadata()
-        description = (
-            summary
-            or "Cross-platform desktop app that captions and tags images using BLIP or remote Ollama models."
+        description = summary or (
+            "Cross-platform desktop app that captions and tags images using BLIP "
+            "or remote Ollama models."
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)

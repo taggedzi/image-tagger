@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThreadPool
+from PySide6 import QtCore
+from PySide6.QtCore import QThreadPool
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -24,11 +27,11 @@ from ..config import AppConfig
 from ..services.analyzer import AnalyzerResult, ImageAnalyzer
 from ..settings_store import SettingsStore
 from ..utils.paths import is_image_file, resolve_image_paths
-from .workers import ProcessingWorker
 from .widgets.about_dialog import AboutDialog
 from .widgets.drop_target import DropTargetWidget
 from .widgets.progress_panel import ProgressPanel
 from .widgets.settings_form import SettingsDialog
+from .workers import ProcessingWorker
 
 
 class MainWindow(QMainWindow):
@@ -220,10 +223,10 @@ class MainWindow(QMainWindow):
         if app is None:
             return
         if active and not self._cursor_busy:
-            app.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QGuiApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
             self._cursor_busy = True
         elif not active and self._cursor_busy:
-            app.restoreOverrideCursor()
+            QGuiApplication.restoreOverrideCursor()
             self._cursor_busy = False
 
     def _render_results(self, results: list[AnalyzerResult]) -> None:

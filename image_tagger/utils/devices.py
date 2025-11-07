@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ except Exception:  # pragma: no cover - optional dependency
     torch = None  # type: ignore[assignment]
 
 
-def detect_torch_device(preference: str = "auto") -> Tuple[str, str]:
+def detect_torch_device(preference: str = "auto") -> tuple[str, str]:
     """Determine the most appropriate torch device string.
 
     Returns
@@ -51,4 +50,3 @@ def torch_device(device_str: str):
     if torch is None:
         return device_str
     return torch.device(device_str)
-

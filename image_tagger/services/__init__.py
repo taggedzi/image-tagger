@@ -1,5 +1,5 @@
 """Service layer for coordinating image analysis and metadata handling."""
 
-from .analyzer import ImageAnalyzer, AnalyzerResult
+from .analyzer import AnalyzerResult, ImageAnalyzer
 
-__all__ = ["ImageAnalyzer", "AnalyzerResult"]
+__all__ = ["AnalyzerResult", "ImageAnalyzer"]

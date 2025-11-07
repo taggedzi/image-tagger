@@ -7,7 +7,8 @@ import io
 import json
 import logging
 import re
-from typing import Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from PIL import Image
 
@@ -15,11 +16,11 @@ from ..config import AppConfig
 from .base import (
     AnalysisRequest,
     ModelCapability,
+    ModelError,
     ModelInfo,
     ModelOutput,
     ModelTag,
     TaggingModel,
-    ModelError,
 )
 from .registry import ModelRegistry
 
@@ -154,10 +155,12 @@ class BaseRemoteVisionModel(TaggingModel):
                 "Write an accessible, richly detailed description suitable for alt text."
             )
             instructions.append(
-                "Explain the overall scene, key objects, people or characters, their attributes, actions, relationships, and the dominant colours or lighting."
+                "Explain the overall scene, key objects, people or characters, their "
+                "attributes, actions, relationships, and the dominant colours or lighting."
             )
             instructions.append(
-                "Use 2-3 sentences and keep the caption under 420 characters while remaining vivid and clear."
+                "Use 2-3 sentences and keep the caption under 420 characters while "
+                "remaining vivid and clear."
             )
         else:
             instructions.append("Set the caption field to null.")
@@ -196,12 +199,12 @@ class BaseRemoteVisionModel(TaggingModel):
 
         try:
             return json.loads(cleaned)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as err:
             matches = list(_JSON_OBJECT_PATTERN.finditer(cleaned))
             if not matches:
                 raise ModelError(
                     f"{self._info.display_name} returned non-JSON output: {cleaned!r}"
-                )
+                ) from err
             merged: dict[str, Any] = {}
             errors: list[str] = []
             for match in matches:
@@ -210,7 +213,7 @@ class BaseRemoteVisionModel(TaggingModel):
                     fragment = json.loads(candidate)
                     if isinstance(fragment, dict):
                         merged.update(fragment)
-                except Exception as exc:  # pragma: no cover - defensive fallback
+                except Exception:  # pragma: no cover - defensive fallback
                     errors.append(candidate)
             if merged:
                 return merged
@@ -220,7 +223,7 @@ class BaseRemoteVisionModel(TaggingModel):
                 ) from None
             raise ModelError(
                 f"{self._info.display_name} produced invalid JSON: {cleaned}"
-            )
+            ) from err
 
     @staticmethod
     def _strip_markdown(text: str) -> str:
@@ -263,7 +266,13 @@ class BaseRemoteVisionModel(TaggingModel):
             headers["Authorization"] = f"Bearer {self._config.remote_api_key}"
         return headers
 
-    def _session_post(self, url: str, payload: dict[str, Any], *, timeout: float | None = None) -> Response:
+    def _session_post(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        *,
+        timeout: float | None = None,
+    ) -> Response:
         if self._session is None:
             raise ModelError("HTTP session not initialised.")
         try:
@@ -360,7 +369,10 @@ class OllamaVisionModel(BaseRemoteVisionModel):
         super().__init__(
             identifier="remote.ollama",
             display_name="Ollama Vision",
-            description="Leverages Ollama-hosted multimodal models such as LLaVA, Qwen2.5-VL, or Gemma.",
+            description=(
+                "Leverages Ollama-hosted multimodal models such as LLaVA, "
+                "Qwen2.5-VL, or Gemma."
+            ),
             backend="ollama",
             config=config,
             tags=("remote", "ollama", "vision", "http"),
@@ -391,7 +403,8 @@ class OllamaVisionModel(BaseRemoteVisionModel):
                 raise
             extended_timeout = self._config.remote_timeout + 60.0
             logger.info(
-                "Ollama request exceeded %.1fs; retrying once with %.1fs to allow the model to load.",
+                "Ollama request exceeded %.1fs; retrying once with %.1fs to allow "
+                "the model to load.",
                 self._config.remote_timeout,
                 extended_timeout,
             )

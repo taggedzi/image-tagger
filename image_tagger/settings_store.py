@@ -33,4 +33,3 @@ def default_settings_path() -> Path:
     else:
         base = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config"))
     return base.expanduser() / "image_tagger" / "settings.yaml"
-

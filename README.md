@@ -32,6 +32,23 @@ pip install -e .
 
 > **Note:** Install the BLIP captioners with `pip install -e .[blip]`. The first time you run a BLIP model, Hugging Face will download the weights (up to ~1 GB); this happens automatically once you start processing images.
 
+### Development workflow
+
+Install development dependencies (ruff, pycodestyle, pytest, etc.) plus the package in editable mode:
+
+```bash
+make install-dev
+```
+
+Available quality commands (all defined in the `Makefile`):
+
+- `make fmt` – format the codebase in-place with `ruff format`.
+- `make lint` – static analysis via `ruff check`.
+- `make style` – run the legacy `pycodestyle` (PEP 8) checks.
+- `make test` – execute the pytest suite.
+- `make check` – run linting, style, and tests in one go (CI uses this target).
+- `make coverage` – collect coverage data with `coverage run` + `coverage report`.
+
 ### Launch the GUI
 
 ```bash

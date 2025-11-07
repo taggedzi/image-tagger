@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from image_tagger.io.yaml_sidecar import YamlSidecarWriter
 
 

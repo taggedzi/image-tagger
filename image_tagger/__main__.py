@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-from dataclasses import asdict
-
 import json
+import sys
+from dataclasses import asdict
+from pathlib import Path
+
 from . import ImageAnalyzer, OutputMode, SettingsStore
 from .models.registry import ModelRegistry
 

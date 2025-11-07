@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable, Protocol, Sequence
+from typing import Protocol
 
 try:  # Pillow is optional for type checking until runtime.
     from PIL import Image
@@ -41,7 +42,7 @@ class ModelOutput:
     tags: list[ModelTag] = field(default_factory=list)
     extras: dict[str, object] = field(default_factory=dict)
 
-    def truncated(self, *, max_tags: int) -> "ModelOutput":
+    def truncated(self, *, max_tags: int) -> ModelOutput:
         """Return a copy with at most ``max_tags`` items."""
         return ModelOutput(
             caption=self.caption,
@@ -85,6 +86,5 @@ class TaggingModel(Protocol):
     def load(self) -> None:
         """Perform any expensive model initialisation."""
 
-    def analyze(self, image: "Image.Image", request: AnalysisRequest) -> ModelOutput:
+    def analyze(self, image: Image.Image, request: AnalysisRequest) -> ModelOutput:
         """Generate tags and/or captions for the provided image."""
-

@@ -41,4 +41,3 @@ class DropTargetWidget(QWidget):
         paths = [Path(url.toLocalFile()) for url in urls]
         self.files_dropped.emit(paths)
         event.acceptProposedAction()
-

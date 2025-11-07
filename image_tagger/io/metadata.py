@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from PIL import Image, PngImagePlugin
 
@@ -97,7 +97,14 @@ class MetadataWriter:
                 exif_dict = piexif.load(exif_blob)
             else:
                 # Create a minimal EXIF structure so piexif.dump succeeds.
-                exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "Interop": {}, "thumbnail": None}
+                exif_dict = {
+                    "0th": {},
+                    "Exif": {},
+                    "GPS": {},
+                    "1st": {},
+                    "Interop": {},
+                    "thumbnail": None,
+                }
 
         zeroth = exif_dict.setdefault("0th", {})
 
@@ -187,7 +194,10 @@ class MetadataWriter:
             return False
 
         if not exif_blob:
-            logger.warning("JPEG %s reported success but no EXIF blob was present after saving.", path)
+            logger.warning(
+                "JPEG %s reported success but no EXIF blob was present after saving.",
+                path,
+            )
             return False
 
         try:
