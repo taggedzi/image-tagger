@@ -1,11 +1,7 @@
-from types import SimpleNamespace
-
 import json
 from types import SimpleNamespace
 
 import pytest
-from PIL import Image
-
 from image_tagger.config import AppConfig
 from image_tagger.models.base import AnalysisRequest, ModelError
 from image_tagger.models.vision_remote import (
@@ -14,6 +10,7 @@ from image_tagger.models.vision_remote import (
     _encode_image,
     _unique,
 )
+from PIL import Image
 
 
 def _analysis_request(max_tags: int = 5) -> AnalysisRequest:

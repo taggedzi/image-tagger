@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from PIL import Image
-
 from image_tagger.config import AppConfig, OutputMode
 from image_tagger.io.metadata import UnsupportedFormatError
 from image_tagger.models.base import (
@@ -17,6 +15,7 @@ from image_tagger.models.base import (
     ModelTag,
 )
 from image_tagger.services.analyzer import ImageAnalyzer
+from PIL import Image
 
 
 class DummySidecarWriter:

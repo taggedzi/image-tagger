@@ -6,7 +6,6 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-
 from image_tagger.utils import paths as paths_module
 from image_tagger.utils.paths import is_image_file, resolve_image_paths
 

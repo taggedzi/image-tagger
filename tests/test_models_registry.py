@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from image_tagger.config import AppConfig
 from image_tagger.models.base import ModelCapability, ModelInfo, TaggingModel
 from image_tagger.models.registry import ModelRegistry

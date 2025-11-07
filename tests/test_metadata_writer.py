@@ -1,6 +1,4 @@
 import pytest
-from PIL import Image
-
 from image_tagger.io.metadata import (
     MetadataWriter,
     UnsupportedFormatError,
@@ -8,6 +6,7 @@ from image_tagger.io.metadata import (
     _decode_xp_keywords,
     _ensure_bytes,
 )
+from PIL import Image
 
 piexif = pytest.importorskip("piexif")
 XP_KEYWORDS_TAG = getattr(piexif.ImageIFD, "XPKeywords", 0x9C9E)

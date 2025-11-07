@@ -7,7 +7,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from image_tagger import OutputMode
 from image_tagger.__main__ import main as cli_main
 from image_tagger.config import AppConfig

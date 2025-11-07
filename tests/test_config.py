@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from image_tagger.config import AppConfig, OutputMode
 
 

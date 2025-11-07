@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from image_tagger.models import blip
 from image_tagger.models.base import AnalysisRequest, ModelError
 
