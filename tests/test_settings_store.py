@@ -30,6 +30,7 @@ def test_default_settings_path_windows(monkeypatch, tmp_path):
 
     assert resolved == appdata / "image_tagger" / "settings.yaml"
 
+
 def test_settings_store_round_trip(tmp_path):
     target_path = tmp_path / "settings.yaml"
     store = SettingsStore(path=target_path)
