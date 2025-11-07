@@ -37,7 +37,7 @@ def _get_package_metadata() -> tuple[str, str, str]:
 def _torch_info() -> str:
     device_str, message = detect_torch_device()
     try:
-        import torch  # noqa: WPS433
+        import torch
     except Exception:
         torch_version = "not installed"
     else:
@@ -47,7 +47,7 @@ def _torch_info() -> str:
 
 def _ollama_info(base_url: str) -> str:
     try:
-        import requests  # noqa: WPS433
+        import requests
     except Exception:
         return f"Ollama backend: requests not installed (configured {base_url})"
 
@@ -72,7 +72,7 @@ def _ollama_info(base_url: str) -> str:
 
 def _requests_info() -> str:
     try:
-        import requests  # noqa: WPS433
+        import requests
     except Exception:
         return "Requests: not installed"
     return f"Requests: {requests.__version__}"
