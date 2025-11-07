@@ -1,122 +1,121 @@
 # Image Tagger
 
-Image Tagger is a cross-platform Python library and desktop application that captions and tags images using pluggable AI models. The default build focuses on Windows, but the PySide6-based GUI and the processing pipeline work on macOS and Linux as well.
+Image Tagger is a cross-platform Python app and library that captions and tags photos. It can run a local BLIP captioning model or connect to an Ollama server so you can choose the workflow that best fits your computer and bandwidth.
 
-## Highlights
+## What you can do
+- Drag-and-drop photos or whole folders and process them in batches with live progress
+- Create clean, alt-text-friendly captions plus keyword tags
+- Write results straight into the image metadata or into YAML sidecar files
+- Switch between local BLIP models and remote Ollama vision models without touching the code
 
-- Drag-and-drop or dialog-based selection of individual images or entire folders
-- Batch processing with threaded execution and live progress feedback
-- Two output modes: embed metadata inside supported formats or emit YAML sidecars
-- Validated settings dialog with persistent storage in the user's configuration directory
-- Extensible model registry with local BLIP captioners (base and large checkpoints) plus Ollama-powered multimodal models
-- Connect to local Ollama servers to run multimodal models such as Qwen2.5-VL, LLaVA, MiniCPM-V, Gemma 3, or PaliGemma 2
-- Automatic GPU detection with graceful CPU fallback for BLIP; PyTorch selects Metal/CUDA when available
-- Preserves existing embedded captions and tags unless you enable the overwrite toggle in settings
-- Clean separation between the core analysis pipeline, metadata IO, and the GUI
+## How tagging works
 
-## Getting started
+### Local BLIP captioners (default)
+- Runs directly on your CPU or GPU using PyTorch and Hugging Face Transformers.
+- First launch downloads ~1 GB of weights and caches them in your Hugging Face cache directory (usually `~/.cache/huggingface`).
+- Works fully offline once the weights are cached.
 
-### Prerequisites
+### Ollama vision models (optional)
+- Requires the free [Ollama](https://ollama.com/download) desktop/server app.
+- You download the multimodal model you want (`ollama run llava`, `qwen2.5-vl`, `minicpm-v`, etc.).
+- Image Tagger talks to the local Ollama HTTP endpoint and streams the captions/tags back into the app.
 
-- Python 3.10 or newer
-- Virtual environment (recommended)
+## What you need
+- Windows, macOS, or Linux with Python 3.10+ already installed.
+- ~3 GB of free disk space (Python env + BLIP weights download).
+- Optional: an NVIDIA/AMD GPU or Apple Silicon for faster BLIP inference. CPU-only still works.
+- Internet access the first time you install dependencies, download BLIP weights, or pull an Ollama model.
 
-Install dependencies:
+## Install without touching system Python
+All commands below run inside the project folder. Replace the activation command with the Windows version if needed.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\\Scripts\\activate
-pip install -U pip
-pip install -e .
-```
+1. **Get the code**
+   ```bash
+   git clone https://github.com/taggedzi/image-tagger.git
+   cd image-tagger
+   ```
+2. **Create a virtual environment so you do not pollute your global Python**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate        # Windows PowerShell: .venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   ```
+3. **Install the app**
+   ```bash
+   pip install -e .
+   ```
+4. **Install BLIP support (required for local captioning)**
+   ```bash
+   pip install -e .[blip]
+   ```
+   The first BLIP run triggers an automatic Hugging Face download. Keep the terminal open until it finishes.
+5. **(Optional) list the available models**
+   ```bash
+   python -m image_tagger --list-models
+   ```
 
-> **Note:** Install the BLIP captioners with `pip install -e .[blip]`. The first time you run a BLIP model, Hugging Face will download the weights (up to ~1 GB); this happens automatically once you start processing images.
+## Prepare Ollama (only if you want remote models)
+1. Download and install Ollama from [ollama.com/download](https://ollama.com/download). Launch it so the background service starts.
+2. Pull a multimodal model once. Example:
+   ```bash
+   ollama run llava
+   ```
+   The first call both downloads and tests the model.
+3. Keep Ollama running. Image Tagger will connect to `http://127.0.0.1:11434` by default. If you host Ollama elsewhere, copy the base URL and API key (if any) for later.
 
-### Development workflow
+## Run the application
 
-Install development dependencies (ruff, pycodestyle, pytest, etc.) plus the package in editable mode:
-
-```bash
-make install-dev
-```
-
-Available quality commands (all defined in the `Makefile`):
-
-- `make fmt` – format the codebase in-place with `ruff format`.
-- `make lint` – static analysis via `ruff check`.
-- `make style` – run the legacy `pycodestyle` (PEP 8) checks.
-- `make test` – execute the pytest suite.
-- `make check` – run linting, style, and tests in one go (CI uses this target).
-- `make coverage` – collect coverage data with `coverage run` + `coverage report`.
-
-### Launch the GUI
-
+### Launch the desktop app
 ```bash
 python -m image_tagger
 ```
+- Drop images or folders into the window, or use the buttons to pick them.
+- Open **Settings** → **Model** to pick `caption.blip-base`, `caption.blip-large`, or `remote.ollama`.
+- When `remote.ollama` is selected, fill in **Remote base URL**, **Remote model id**, and other fields (temperature, token limit, timeout, API key). Click **Refresh list** to see which Ollama models are currently running.
+- Choose **Output mode**: *Embedded metadata* edits supported image formats in place, while *YAML sidecars* keeps the original files untouched and writes `.yaml` files next to them.
+- Changes are saved automatically to `%APPDATA%\image_tagger\settings.yaml` on Windows or `~/.config/image_tagger/settings.yaml` on Linux/macOS.
 
-Drag files onto the drop area or use the buttons to choose files/folders. Open the **Settings** dialog to switch models, tweak tagging behaviour, or change the output mode. Settings are saved to:
-
-- Windows: `%APPDATA%\image_tagger\settings.yaml`
-- Linux/macOS: `$XDG_CONFIG_HOME/image_tagger/settings.yaml` (defaults to `~/.config/image_tagger/settings.yaml`)
-
-### Headless usage
-
-You can also process images without the GUI:
-
+### Command-line (headless) mode
 ```bash
-python -m image_tagger --headless --input /path/to/images --model caption.blip-base --output-mode sidecar
+python -m image_tagger \
+  --headless \
+  --input /path/to/images \
+  --model caption.blip-base \
+  --output-mode sidecar
 ```
+Headless runs print a JSON summary with every caption, tag list, and destination path. This mode is handy for automation or server use.
 
-Headless runs emit a JSON summary that lists captions, tags, and where the data was written.
+## Tips and troubleshooting
+- **Slow first run?** BLIP weight downloads or Ollama model loads can take several minutes. They are cached, so future runs are fast.
+- **CPU vs GPU:** BLIP auto-detects CUDA/Metal. If you only have a CPU, expect longer processing times but the results are identical.
+- **Need to start fresh?** Delete the settings file listed above; Image Tagger will recreate it with safe defaults.
+- **Remote timeouts:** Ollama may take longer than 90 s to warm up. Increase **Remote timeout** under Settings if you see timeout errors.
 
-### Using Ollama vision models
+## Developer guide
+1. Install tooling plus the package in editable mode:
+   ```bash
+   make install-dev          # Equivalent to pip install -e .[blip] plus test/lint deps
+   ```
+2. Helpful commands (defined in the `Makefile`):
+   - `make fmt` – format with `ruff format`.
+   - `make lint` – static analysis via `ruff check`.
+   - `make style` – legacy `pycodestyle`.
+   - `make test` – run the pytest suite.
+   - `make check` – lint + style + tests (CI default).
+   - `make coverage` – run coverage and print a summary.
+3. Project layout:
+   ```
+   image_tagger/
+   ├── models/            # BLIP + Ollama implementations registered via ModelRegistry
+   ├── services/          # High-level pipeline and metadata orchestration
+   ├── gui/               # PySide6 desktop UI
+   ├── io/                # Metadata writers and YAML sidecars
+   ├── config.py          # Pydantic settings shared by GUI and CLI
+   └── settings_store.py  # Cross-platform persistence helper
+   ```
+4. Adding new models:
+   - Implement `TaggingModel` in `image_tagger/models/your_model.py`.
+   - Register it with `ModelRegistry.register("your.id", YourModel)`.
+   - List extra dependencies inside `pyproject.toml` under `[project.optional-dependencies]`.
 
-1. Install and launch Ollama with a multimodal model, e.g. `ollama run llava` (or `qwen2.5-vl`, `minicpm-v`, `gemma3`, `paligemma-2`).
-2. Open the Image Tagger settings dialog and choose **Ollama Vision** from the model list.
-3. Adjust the *Remote base URL*, *Remote model id*, *Remote temperature*, *Remote max tokens*, and optional *Remote API key* fields as needed. Use **Refresh list** to pull the currently available vision-capable models from Ollama. All remote-specific settings are persisted alongside the rest of the application configuration.
-4. Run analyses through the GUI or via headless mode, e.g.
-
-```bash
-python -m image_tagger --headless --model remote.ollama --input ./images
-```
-
-> **Tip:** The same remote settings are shared between the GUI and CLI modes. Configuration files now accept the following additional keys: `remote_base_url`, `remote_model`, `remote_temperature`, `remote_max_tokens`, `remote_timeout`, `remote_api_key`, and `overwrite_embedded_metadata`.
-> **Warm-up:** The first request may take a while as Ollama loads the model; Image Tagger retries once with an extended timeout, but you can also raise the *Remote timeout* value in settings (default 90 s).
-> **Accessibility:** Vision models prompted through Ollama now generate 2–3 sentence captions optimised for alt text, highlighting subjects, relationships, and colours while staying under ~420 characters.
-
-### Listing installed models
-
-```bash
-python -m image_tagger --list-models
-```
-
-## Architecture overview
-
-```
-image_tagger/
-├── config.py          # Pydantic-based application settings
-├── settings_store.py  # Cross-platform config persistence helper
-├── utils/             # Path discovery utilities
-├── models/            # Model interfaces plus BLIP and Ollama implementations
-├── services/          # High-level pipeline coordinating models and IO
-├── io/                # Metadata writers (EXIF/PNG) and YAML sidecars
-└── gui/               # PySide6 application with drag-and-drop and settings dialog
-```
-
-`ImageAnalyzer` orchestrates model execution, metadata embedding, and sidecar generation. Models plug in via the `ModelRegistry`; each model adheres to the `TaggingModel` protocol defined in `models/base.py`.
-
-## Extending with new models
-
-1. Create a new module in `image_tagger/models/` that implements `TaggingModel`.
-2. Register the factory with `ModelRegistry.register("your.id", YourModel)`.
-3. Add any extra dependencies to the relevant optional dependency group in `pyproject.toml`.
-
-The GUI automatically discovers new models via the registry.
-
-## Next steps
-
-- Add additional ML models (e.g. OpenAI / Gemini multimodal endpoints)
-- Improve metadata embedding coverage for additional formats (WebP, TIFF, etc.)
-- Provide thumbnail previews inside the GUI result list
-- Bundle automated tests around the BLIP pipelines and remote integrations
+With these steps, someone with basic command-line skills can install Image Tagger in an isolated Python environment, choose either local BLIP or Ollama-powered captions, and start tagging images in minutes.
