@@ -25,6 +25,7 @@ from ..services.analyzer import AnalyzerResult, ImageAnalyzer
 from ..settings_store import SettingsStore
 from ..utils.paths import is_image_file, resolve_image_paths
 from .workers import ProcessingWorker
+from .widgets.about_dialog import AboutDialog
 from .widgets.drop_target import DropTargetWidget
 from .widgets.progress_panel import ProgressPanel
 from .widgets.settings_form import SettingsDialog
@@ -48,6 +49,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._rebuild_status_bar()
+        self._build_menus()
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -103,6 +105,12 @@ class MainWindow(QMainWindow):
 
         status = QStatusBar()
         self.setStatusBar(status)
+
+    def _build_menus(self) -> None:
+        menu_bar = self.menuBar()
+        help_menu = menu_bar.addMenu("&Help")
+        about_action = help_menu.addAction("About Image Tagger…")
+        about_action.triggered.connect(self._show_about_dialog)
 
     def _rebuild_status_bar(self) -> None:
         status = self.statusBar()
@@ -256,3 +264,7 @@ class MainWindow(QMainWindow):
     def _clear_results(self) -> None:
         self.results_view.clear()
         self.progress_panel.reset()
+
+    def _show_about_dialog(self) -> None:
+        dialog = AboutDialog(self.config, self)
+        dialog.exec()
