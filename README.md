@@ -137,3 +137,4 @@ With these steps, someone with basic command-line skills can install Image Tagge
 4. **Build distributables.** Run `make build` to generate both the source distribution and wheel in `dist/`. The `build` package is included in the `dev` extra, so `make install-dev` installs everything required.
 5. **Publish.** Attach the wheel (`dist/*.whl`) and source tarball (`dist/*.tar.gz`) to a GitHub release for the corresponding tag, or upload them to PyPI with `twine` if desired. These generated files are artifacts—do not commit them to git.
 6. **Document the release.** In the GitHub Release notes (or CHANGELOG), summarize notable changes, requirements, and any manual steps (e.g., BLIP model downloads).
+7. **Release notes tip.** For `v1.1.0`, highlight the new Ollama filename suggestions/auto-rename option, the CLI/GUI sinks for that feature, and remind users to enable the new metadata options if they want file renaming behavior.
