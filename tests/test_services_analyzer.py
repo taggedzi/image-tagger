@@ -110,6 +110,8 @@ def test_analyze_paths_runs_model_and_writes_sidecars(tmp_path, monkeypatch):
         assert metadata["caption"] == "caption"
         assert metadata["model"] == "dummy.model"
         assert metadata["tags"]
+        assert "suggested_filename" in metadata
+        assert metadata["suggested_filename"] is None
 
     # Progress callback invoked once per image with sorted paths.
     assert [(c, t, p.name) for c, t, p in progress_calls] == [
@@ -256,3 +258,4 @@ def test_auto_rename_applies_suggestion(tmp_path, monkeypatch):
     assert result.applied_filename == "new-name.jpg"
     assert result.suggested_filename == "new-name"
     assert writer.calls and writer.calls[0]["path"].name == "new-name.jpg"
+    assert writer.calls[0]["metadata"]["suggested_filename"] == "new-name"

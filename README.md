@@ -7,6 +7,9 @@ Image Tagger is a cross-platform Python app and library that captions and tags p
 - Create clean, alt-text-friendly captions plus keyword tags
 - Write results straight into the image metadata or into YAML sidecar files
 - Switch between local BLIP models and remote Ollama vision models without touching the code
+- Surface suggested filenames in the results grid (and optionally rename files) so you can accept or ignore them.
+- Highlight the drag-and-drop area with a dashed frame that always shows the drop zone and brightens when you hover files over it.
+- Suggested filenames now also appear in sidecar metadata (null when disabled) so downstream tools can consistently read that value.
 - Ask the model to suggest safe, descriptive filenames and optionally auto-rename your images
 
 ## How tagging works

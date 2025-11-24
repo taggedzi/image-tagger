@@ -98,8 +98,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_panel)
 
         self.results_view = QTreeWidget()
-        self.results_view.setColumnCount(4)
-        self.results_view.setHeaderLabels(["Image", "Caption", "Tags", "Output"])
+        self.results_view.setColumnCount(5)
+        self.results_view.setHeaderLabels(
+            ["Image", "Filename", "Caption", "Tags", "Output"]
+        )
         self.results_view.setRootIsDecorated(False)
         self.results_view.setAlternatingRowColors(True)
         layout.addWidget(self.results_view, stretch=1)
@@ -236,9 +238,11 @@ class MainWindow(QMainWindow):
                 if output:
                     output += " + "
                 output += str(result.sidecar_path)
+            filename_label = result.applied_filename or result.suggested_filename or ""
             item = QTreeWidgetItem(
                 [
                     str(result.image_path),
+                    filename_label,
                     result.caption or "",
                     tags,
                     output or "None",

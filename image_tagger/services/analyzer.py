@@ -260,6 +260,7 @@ class ImageAnalyzer:
             "model": model_id,
             "caption": payload.get("caption"),
             "tags": payload.get("tag_details"),
+            "suggested_filename": payload.get("suggested_filename"),
             "extras": payload.get("extras"),
         }
         return self.sidecar_writer.write(
