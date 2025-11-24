@@ -208,6 +208,7 @@ def _register() -> None:
     ]
 
     for identifier, model_id, label, desc in available_models:
+
         def _factory(
             model_id=model_id,
             identifier=identifier,

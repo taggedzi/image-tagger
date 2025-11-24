@@ -103,6 +103,12 @@ class SettingsDialog(QDialog):
         )
         self.overwrite_metadata_check.setChecked(config.overwrite_embedded_metadata)
 
+        self.suggest_filenames_check = QCheckBox("Ask the model to suggest filenames")
+        self.suggest_filenames_check.setChecked(config.suggest_filenames)
+
+        self.auto_rename_check = QCheckBox("Automatically rename images")
+        self.auto_rename_check.setChecked(config.auto_rename_files)
+
         self.output_dir_edit = QLineEdit(
             str(config.output_directory) if config.output_directory else ""
         )
@@ -283,6 +289,24 @@ class SettingsDialog(QDialog):
             ),
         )
         output_form.addRow(
+            "",
+            self._with_help(
+                self.suggest_filenames_check,
+                "Filename suggestions",
+                "Ask the model to propose a short, URL-safe filename stem for each image. "
+                "Suggestions are included in results and sidecars.",
+            ),
+        )
+        output_form.addRow(
+            "",
+            self._with_help(
+                self.auto_rename_check,
+                "Auto-rename",
+                "Rename images on disk using the suggested filename when available. "
+                "Collisions are resolved by appending a number.",
+            ),
+        )
+        output_form.addRow(
             "Output directory",
             self._with_help(
                 output_dir_container,
@@ -398,6 +422,8 @@ class SettingsDialog(QDialog):
             "sidecar_extension": self.sidecar_type_combo.currentData(),
             "embed_metadata": self.embed_check.isChecked(),
             "overwrite_embedded_metadata": self.overwrite_metadata_check.isChecked(),
+            "suggest_filenames": self.suggest_filenames_check.isChecked(),
+            "auto_rename_files": self.auto_rename_check.isChecked(),
             "output_directory": self._parse_optional_path(self.output_dir_edit.text()),
             "localization": self.locale_edit.text() or None,
             "remote_base_url": self.remote_base_url_edit.text(),
@@ -491,9 +517,7 @@ class SettingsDialog(QDialog):
         button.setText("?")
         button.setAutoRaise(True)
         button.setFixedSize(24, 24)
-        button.clicked.connect(
-            partial(QMessageBox.information, self, title, message)
-        )
+        button.clicked.connect(partial(QMessageBox.information, self, title, message))
         return button
 
     def _normalise_width(self, widget: QWidget) -> None:

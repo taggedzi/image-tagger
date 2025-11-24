@@ -17,6 +17,7 @@ from ..io.yaml_sidecar import YamlSidecarWriter
 from ..models.base import AnalysisRequest, ModelError, ModelOutput, TaggingModel
 from ..models.registry import ModelRegistry
 from ..utils.paths import resolve_image_paths
+from ..utils.text import slugify_filename
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,10 @@ class AnalyzerResult:
     """Summary of processing work for a single image."""
 
     image_path: Path
-    caption: str | None
-    tags: list[str]
+    suggested_filename: str | None = None
+    applied_filename: str | None = None
+    caption: str | None = None
+    tags: list[str] = field(default_factory=list)
     embedded: bool = False
     sidecar_path: Path | None = None
     extras: dict[str, object] = field(default_factory=dict)
@@ -80,6 +83,8 @@ class ImageAnalyzer:
                 logger.exception("Failed to analyze %s", path)
                 return AnalyzerResult(
                     image_path=path,
+                    suggested_filename=None,
+                    applied_filename=None,
                     caption=None,
                     tags=[],
                     error_message=str(exc),
@@ -116,11 +121,11 @@ class ImageAnalyzer:
                 output = model.analyze(img, request)
             except ModelError as exc:
                 identifier = model.info().identifier
-                logger.warning(
-                    "Model '%s' could not analyze %s: %s", identifier, image_path, exc
-                )
+                logger.warning("Model '%s' could not analyze %s: %s", identifier, image_path, exc)
                 return AnalyzerResult(
                     image_path=image_path,
+                    suggested_filename=None,
+                    applied_filename=None,
                     caption=None,
                     tags=[],
                     embedded=False,
@@ -132,36 +137,102 @@ class ImageAnalyzer:
         prepared = self._prepare_output(output)
         model_identifier = model.info().identifier
 
+        rename_result = self._apply_filename_strategy(image_path, prepared)
+        final_path = rename_result["path"]
+        suggested_filename = rename_result["suggested"]
+        applied_filename = rename_result["applied"]
+
         embedded = False
         sidecar_path: Path | None = None
 
         if self.config.output_mode == OutputMode.EMBED:
-            embedded = self._try_embed(image_path, prepared)
+            embedded = self._try_embed(final_path, prepared)
             if not embedded:
-                sidecar_path = self._write_sidecar(image_path, prepared, model_identifier)
+                sidecar_path = self._write_sidecar(final_path, prepared, model_identifier)
         else:
-            sidecar_path = self._write_sidecar(image_path, prepared, model_identifier)
+            sidecar_path = self._write_sidecar(final_path, prepared, model_identifier)
             if self.config.embed_metadata:
-                embedded = self._try_embed(image_path, prepared)
+                embedded = self._try_embed(final_path, prepared)
 
         return AnalyzerResult(
-            image_path=image_path,
+            image_path=final_path,
+            suggested_filename=suggested_filename,
+            applied_filename=applied_filename,
             caption=prepared["caption"],
             tags=list(prepared["tags"]),
             embedded=embedded,
             sidecar_path=sidecar_path,
-            extras={**prepared.get("extras", {}), "model": model_identifier},
+            extras={
+                **prepared.get("extras", {}),
+                "model": model_identifier,
+                "suggested_filename": suggested_filename,
+                "applied_filename": applied_filename,
+                "original_path": str(image_path),
+            },
         )
 
     def _prepare_output(self, output: ModelOutput) -> dict[str, object]:
         trimmed = output.truncated(max_tags=self.config.max_tags)
+        suggested = None
+        raw_suggested = None
+        if self.config.suggest_filenames and trimmed.filename:
+            raw_suggested = trimmed.filename
+            suggested = slugify_filename(trimmed.filename)
         data = {
             "caption": trimmed.caption,
             "tags": [tag.value for tag in trimmed.tags],
             "tag_details": [tag.as_dict() for tag in trimmed.tags],
+            "suggested_filename": suggested,
+            "raw_suggested_filename": raw_suggested,
             "extras": trimmed.extras,
         }
         return data
+
+    def _apply_filename_strategy(
+        self, image_path: Path, payload: dict[str, object]
+    ) -> dict[str, object]:
+        suggested = payload.get("suggested_filename")
+        raw_suggested = payload.get("raw_suggested_filename")
+        if not self.config.suggest_filenames or not isinstance(suggested, str):
+            return {"path": image_path, "suggested": None, "applied": None}
+
+        if image_path.stem == suggested:
+            target = image_path
+        else:
+            target = self._dedupe_target_path(image_path, suggested)
+        if target == image_path or not self.config.auto_rename_files:
+            return {
+                "path": image_path,
+                "suggested": suggested,
+                "applied": None,
+            }
+
+        try:
+            image_path.rename(target)
+            return {"path": target, "suggested": suggested, "applied": target.name}
+        except Exception as exc:  # pragma: no cover - filesystem issues are surfaced to users
+            logger.warning("Failed to rename %s to %s: %s", image_path, target, exc)
+            return {
+                "path": image_path,
+                "suggested": suggested,
+                "applied": None,
+                "error": str(exc),
+                "raw_suggested": raw_suggested,
+            }
+
+    @staticmethod
+    def _dedupe_target_path(image_path: Path, stem: str) -> Path:
+        suffix = image_path.suffix
+        base = image_path.with_name(stem + suffix)
+        if not base.exists():
+            return base
+
+        counter = 1
+        while True:
+            candidate = image_path.with_name(f"{stem}-{counter}{suffix}")
+            if not candidate.exists():
+                return candidate
+            counter += 1
 
     def _try_embed(self, image_path: Path, payload: dict[str, object]) -> bool:
         caption = payload.get("caption")
@@ -183,9 +254,7 @@ class ImageAnalyzer:
             logger.exception("Failed to embed metadata into %s", image_path)
             return False
 
-    def _write_sidecar(
-        self, image_path: Path, payload: dict[str, object], model_id: str
-    ) -> Path:
+    def _write_sidecar(self, image_path: Path, payload: dict[str, object], model_id: str) -> Path:
         metadata = {
             "image": str(image_path),
             "model": model_id,
@@ -201,13 +270,8 @@ class ImageAnalyzer:
 
     def _get_model(self) -> TaggingModel:
         with self._model_lock:
-            if (
-                self._model is None
-                or self._model.info().identifier != self.config.model_name
-            ):
+            if self._model is None or self._model.info().identifier != self.config.model_name:
                 logger.info("Loading model '%s'...", self.config.model_name)
-                self._model = ModelRegistry.get(
-                    self.config.model_name, config=self.config
-                )
+                self._model = ModelRegistry.get(self.config.model_name, config=self.config)
                 logger.info("Model '%s' ready.", self.config.model_name)
         return self._model

@@ -62,15 +62,21 @@ class AppConfig(BaseModel):
     )
     embed_metadata: bool = Field(
         default=True,
-        description=(
-            "When true and supported, embed generated metadata directly in the image."
-        ),
+        description=("When true and supported, embed generated metadata directly in the image."),
     )
     overwrite_embedded_metadata: bool = Field(
         default=False,
         description=(
             "When embedding metadata, overwrite existing caption/tag fields inside the image."
         ),
+    )
+    suggest_filenames: bool = Field(
+        default=False,
+        description="Attempt to propose safe filenames for processed images.",
+    )
+    auto_rename_files: bool = Field(
+        default=False,
+        description="When true, apply suggested filenames and rename images on disk.",
     )
     output_directory: Path | None = Field(
         default=None,
@@ -135,6 +141,12 @@ class AppConfig(BaseModel):
                 "Remote base URL must include a scheme such as http://localhost:11434."
             )
         self.remote_base_url = base.rstrip("/")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_filename_preferences(self) -> AppConfig:
+        if self.auto_rename_files and not self.suggest_filenames:
+            self.suggest_filenames = True
         return self
 
     def as_dict(self) -> dict[str, Any]:

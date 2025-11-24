@@ -45,3 +45,8 @@ def test_load_rejects_invalid_file(tmp_path):
 
     with pytest.raises(ValueError):
         AppConfig.load(path)
+
+
+def test_auto_rename_enables_suggestions():
+    config = AppConfig(auto_rename_files=True)
+    assert config.suggest_filenames is True

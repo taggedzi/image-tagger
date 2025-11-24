@@ -7,6 +7,7 @@ Image Tagger is a cross-platform Python app and library that captions and tags p
 - Create clean, alt-text-friendly captions plus keyword tags
 - Write results straight into the image metadata or into YAML sidecar files
 - Switch between local BLIP models and remote Ollama vision models without touching the code
+- Ask the model to suggest safe, descriptive filenames and optionally auto-rename your images
 
 ## How tagging works
 
@@ -72,6 +73,7 @@ python -m image_tagger
 - Drop images or folders into the window, or use the buttons to pick them.
 - Open **Settings** → **Model** to pick `caption.blip-base`, `caption.blip-large`, or `remote.ollama`.
 - When `remote.ollama` is selected, fill in **Remote base URL**, **Remote model id**, and other fields (temperature, token limit, timeout, API key). Click **Refresh list** to see which Ollama models are currently running.
+- Under **Metadata Output**, enable **Filename suggestions** to include a proposed slug in results, and turn on **Auto-rename** if you want Image Tagger to rename files on disk using those suggestions (collisions get `-1`, `-2`, etc.).
 - Choose **Output mode**: *Embedded metadata* edits supported image formats in place, while *YAML sidecars* keeps the original files untouched and writes `.yaml` files next to them.
 - Changes are saved automatically to `%APPDATA%\image_tagger\settings.yaml` on Windows or `~/.config/image_tagger/settings.yaml` on Linux/macOS.
 
@@ -81,7 +83,9 @@ python -m image_tagger \
   --headless \
   --input /path/to/images \
   --model caption.blip-base \
-  --output-mode sidecar
+  --output-mode sidecar \
+  --suggest-filenames \
+  --auto-rename-files
 ```
 Headless runs print a JSON summary with every caption, tag list, and destination path. This mode is handy for automation or server use.
 

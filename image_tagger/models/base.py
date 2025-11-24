@@ -40,6 +40,7 @@ class ModelOutput:
 
     caption: str | None = None
     tags: list[ModelTag] = field(default_factory=list)
+    filename: str | None = None
     extras: dict[str, object] = field(default_factory=dict)
 
     def truncated(self, *, max_tags: int) -> ModelOutput:
@@ -47,6 +48,7 @@ class ModelOutput:
         return ModelOutput(
             caption=self.caption,
             tags=self.tags[:max_tags],
+            filename=self.filename,
             extras=self.extras,
         )
 

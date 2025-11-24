@@ -150,6 +150,16 @@ def test_base_remote_analyze_parses_backend(tmp_path):
     assert model.prompts
 
 
+def test_base_remote_parses_filename():
+    model = DummyRemoteModel(json.dumps({"caption": "Hi", "tags": [], "filename": "sunset"}))
+    request = _analysis_request(max_tags=3)
+    image = Image.new("RGB", (2, 2))
+
+    result = model.analyze(image, request)
+
+    assert result.filename == "sunset"
+
+
 def test_base_remote_prompt_varies_with_flags():
     payload = json.dumps({"caption": None, "tags": []})
     model = DummyRemoteModel(payload)

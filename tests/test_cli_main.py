@@ -63,6 +63,8 @@ def test_cli_runs_headless_job(monkeypatch, tmp_path, capsys):
                     tags=["alpha", "beta"],
                     embedded=True,
                     sidecar_path=None,
+                    suggested_filename=None,
+                    applied_filename=None,
                     error_message=None,
                 )
             ]

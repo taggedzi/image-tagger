@@ -61,9 +61,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(12)
         self.setCentralWidget(central)
 
-        self.info_label = QLabel(
-            "Select images or folders, or drop them below to begin tagging."
-        )
+        self.info_label = QLabel("Select images or folders, or drop them below to begin tagging.")
         self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
 

@@ -35,6 +35,16 @@ def main(argv: list[str] | None = None) -> None:
         help="Print available models and exit.",
     )
     parser.add_argument(
+        "--suggest-filenames",
+        action="store_true",
+        help="Ask the model to suggest safe filenames for each image.",
+    )
+    parser.add_argument(
+        "--auto-rename-files",
+        action="store_true",
+        help="Apply suggested filenames and rename images on disk.",
+    )
+    parser.add_argument(
         "--headless",
         action="store_true",
         help="Run without launching the GUI.",
@@ -69,6 +79,10 @@ def main(argv: list[str] | None = None) -> None:
         config.model_name = args.model
     if args.output_mode:
         config.output_mode = OutputMode(args.output_mode)
+    if args.suggest_filenames:
+        config.suggest_filenames = True
+    if args.auto_rename_files:
+        config.auto_rename_files = True
 
     analyzer = ImageAnalyzer(config)
     results = analyzer.analyze_target(args.input)
@@ -80,6 +94,8 @@ def main(argv: list[str] | None = None) -> None:
             "tags": result.tags,
             "embedded": result.embedded,
             "sidecar_path": str(result.sidecar_path) if result.sidecar_path else None,
+            "suggested_filename": result.suggested_filename,
+            "applied_filename": result.applied_filename,
             "error": result.error_message,
         }
         for result in results

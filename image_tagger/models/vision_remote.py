@@ -122,6 +122,10 @@ class BaseRemoteVisionModel(TaggingModel):
             caption_raw = payload.get("caption")
             if isinstance(caption_raw, str):
                 caption = caption_raw.strip() or None
+        filename: str | None = None
+        filename_raw = payload.get("filename")
+        if isinstance(filename_raw, str):
+            filename = filename_raw.strip() or None
         tags: list[ModelTag] = []
         if request.generate_tags:
             tags_payload = payload.get("tags", [])
@@ -130,6 +134,7 @@ class BaseRemoteVisionModel(TaggingModel):
         return ModelOutput(
             caption=caption,
             tags=tags[: request.max_tags],
+            filename=filename,
             extras={
                 "backend": self._backend,
                 "remote_model": self._config.remote_model,
@@ -145,7 +150,7 @@ class BaseRemoteVisionModel(TaggingModel):
         instructions: list[str] = [
             "You are an assistant that analyses a single image and returns strictly valid JSON.",
             "Respond with minified JSON that matches this schema:",
-            '{"caption": string|null, "tags": string[]}',
+            '{"caption": string|null, "tags": string[], "filename": string|null}',
             f"Use {locale_hint} for all text.",
             "Never wrap the JSON in backticks or additional commentary.",
         ]
@@ -174,8 +179,14 @@ class BaseRemoteVisionModel(TaggingModel):
             instructions.append("Return an empty array for tags.")
 
         instructions.append(
+            "Propose a concise, URL-safe filename stem in the filename field, without any file "
+            "extension. Use lowercase ASCII letters, numbers, and hyphens only, avoid spaces, and "
+            "prefer 3-6 short words. Omit the filename if you cannot infer one."
+        )
+
+        instructions.append(
             "If you cannot understand the image, return "
-            '{"caption": null, "tags": []}.'
+            '{"caption": null, "tags": [], "filename": null}.'
         )
 
         return " ".join(instructions)
@@ -221,9 +232,7 @@ class BaseRemoteVisionModel(TaggingModel):
                 raise ModelError(
                     f"{self._info.display_name} produced invalid JSON fragments: {errors[0]}"
                 ) from None
-            raise ModelError(
-                f"{self._info.display_name} produced invalid JSON: {cleaned}"
-            ) from err
+            raise ModelError(f"{self._info.display_name} produced invalid JSON: {cleaned}") from err
 
     @staticmethod
     def _strip_markdown(text: str) -> str:
@@ -370,8 +379,7 @@ class OllamaVisionModel(BaseRemoteVisionModel):
             identifier="remote.ollama",
             display_name="Ollama Vision",
             description=(
-                "Leverages Ollama-hosted multimodal models such as LLaVA, "
-                "Qwen2.5-VL, or Gemma."
+                "Leverages Ollama-hosted multimodal models such as LLaVA, Qwen2.5-VL, or Gemma."
             ),
             backend="ollama",
             config=config,
@@ -439,9 +447,7 @@ class OllamaVisionModel(BaseRemoteVisionModel):
 
 
 def _register() -> None:
-    ModelRegistry.register(
-        "remote.ollama", lambda config=None: OllamaVisionModel(config=config)
-    )
+    ModelRegistry.register("remote.ollama", lambda config=None: OllamaVisionModel(config=config))
 
 
 _register()

@@ -126,9 +126,7 @@ class AboutDialog(QDialog):
         layout.addWidget(desc_label)
 
         if homepage:
-            link_label = QLabel(
-                f'<a href="{homepage}">{homepage}</a>'
-            )
+            link_label = QLabel(f'<a href="{homepage}">{homepage}</a>')
         else:
             link_label = QLabel(
                 '<a href="https://github.com/your-org/image-tagger">Project repository</a>'

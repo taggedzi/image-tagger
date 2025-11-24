@@ -205,3 +205,54 @@ def test_try_embed_handles_exceptions(tmp_path):
 
     analyzer.metadata_writer = SimpleNamespace(write=raise_runtime)
     assert analyzer._try_embed(tmp_path / "file.jpg", {"caption": None, "tags": []}) is False
+
+
+def test_prepare_output_includes_filename_when_enabled():
+    analyzer = ImageAnalyzer(AppConfig(suggest_filenames=True))
+    output = ModelOutput(
+        caption="hi",
+        tags=[ModelTag(value="one")],
+        filename="My Sample Name",
+    )
+
+    prepared = analyzer._prepare_output(output)
+
+    assert prepared["suggested_filename"] == "my-sample-name"
+    assert prepared["raw_suggested_filename"] == "My Sample Name"
+
+
+def test_auto_rename_applies_suggestion(tmp_path, monkeypatch):
+    img_path = tmp_path / "hash.jpg"
+    _create_image(img_path)
+    config = AppConfig(
+        model_name="dummy.model",
+        output_mode=OutputMode.SIDECAR,
+        embed_metadata=False,
+        suggest_filenames=True,
+        auto_rename_files=True,
+        max_concurrency=1,
+    )
+    analyzer = ImageAnalyzer(config)
+
+    class FilenameModel(DummyModel):
+        def analyze(self, image, request):
+            return ModelOutput(
+                caption="c",
+                tags=[ModelTag(value="tag")],
+                filename="new-name",
+            )
+
+    monkeypatch.setattr(
+        "image_tagger.services.analyzer.ModelRegistry.get",
+        lambda name, config: FilenameModel(),
+    )
+    analyzer.metadata_writer = SimpleNamespace(write=lambda *args, **kwargs: True)
+    writer = DummySidecarWriter(tmp_path)
+    analyzer.sidecar_writer = writer
+
+    result = analyzer.analyze_paths([img_path])[0]
+
+    assert result.image_path.name == "new-name.jpg"
+    assert result.applied_filename == "new-name.jpg"
+    assert result.suggested_filename == "new-name"
+    assert writer.calls and writer.calls[0]["path"].name == "new-name.jpg"
